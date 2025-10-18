@@ -1,0 +1,19 @@
+# https://taskfile.dev
+
+version: "3"
+
+tasks:
+  sqlc:
+    desc: Generate SQL queries using sqlc.
+    silent: true
+    cmds:
+      - sqlc generate -f db/sqlc.yml
+
+  migration:
+    silent: true
+    desc: "Create new migration. Usage: task migration -- create_users_table"
+    env:
+      GOOSE_DRIVER: sqlite3
+      GOOSE_MIGRATION_DIR: db/migrations
+    cmds:
+      - goose create {{.CLI_ARGS}} sql
