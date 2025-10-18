@@ -33,7 +33,9 @@ func TestNewEngine(t *testing.T) {
 		mockRepo := mocks.NewQueries(t)
 		pollInterval := 5 * time.Second
 
-		engine := NewEngine(mockRepo, pollInterval, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: pollInterval,
+		})
 
 		require.NotNil(t, engine)
 		require.NotNil(t, engine.logger)
@@ -50,7 +52,10 @@ func TestNewEngine(t *testing.T) {
 		pollInterval := 10 * time.Second
 		logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
 
-		engine := NewEngine(mockRepo, pollInterval, logger)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: pollInterval,
+			Logger:       logger,
+		})
 
 		require.NotNil(t, engine)
 		require.Equal(t, logger, engine.logger)
@@ -67,7 +72,10 @@ func TestNewEngine(t *testing.T) {
 		pollInterval := 1 * time.Second
 		logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-		engine := NewEngine(mockRepo, pollInterval, logger)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: pollInterval,
+			Logger:       logger,
+		})
 
 		require.NotNil(t, engine.repo)
 		require.NotNil(t, engine.handlers)
@@ -85,7 +93,9 @@ func TestEngine_RegisterHandler(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		handler := &mockHandler{}
 		err := engine.RegisterHandler(StatusPending, handler)
@@ -98,7 +108,9 @@ func TestEngine_RegisterHandler(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		handler1 := &mockHandler{}
 		handler2 := &mockHandler{}
@@ -108,7 +120,7 @@ func TestEngine_RegisterHandler(t *testing.T) {
 
 		err = engine.RegisterHandler(StatusPending, handler2)
 		require.Error(t, err)
-		require.Equal(t, ErrHandlerAlreadyRegistered, err)
+		require.ErrorIs(t, err, ErrHandlerAlreadyRegistered)
 		require.Equal(t, handler1, engine.handlers[StatusPending])
 	})
 
@@ -116,7 +128,9 @@ func TestEngine_RegisterHandler(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		handler1 := &mockHandler{}
 		handler2 := &mockHandler{}
@@ -144,7 +158,9 @@ func TestEngine_SetTimeout(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		timeout := 5 * time.Minute
 		engine.SetTimeout(StatusBuilding, timeout)
@@ -163,7 +179,9 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-1",
@@ -183,7 +201,9 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-2",
@@ -202,7 +222,9 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-3",
@@ -221,7 +243,9 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-4",
@@ -240,7 +264,9 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-5",
@@ -259,7 +285,9 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-6",
@@ -298,7 +326,9 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-7",
@@ -338,7 +368,9 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		expectedErr := errors.New("database error")
 		mockRepo.On("GetDeployment", mock.Anything, "dep-8").
@@ -354,7 +386,9 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-9",
@@ -388,7 +422,9 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-10",
@@ -422,7 +458,9 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-11",
@@ -456,7 +494,9 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-12",
@@ -490,7 +530,9 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-13",
@@ -525,7 +567,9 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-14",
@@ -557,11 +601,13 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("log creation failure does not stop processing", func(t *testing.T) {
+	t.Run("log creation failure returns error", func(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-15",
@@ -578,14 +624,13 @@ func TestEngine_ProcessDeployment(t *testing.T) {
 		mockRepo.On("GetDeployment", mock.Anything, "dep-15").
 			Return(deployment, nil)
 
-		mockRepo.On("UpdateDeploymentStatus", mock.Anything, mock.Anything).Return(nil)
-
 		mockRepo.On("CreateDeploymentLog", mock.Anything, mock.Anything).
 			Return(errors.New("log creation failed"))
 
 		err = engine.ProcessDeployment(context.Background(), "dep-15")
 
-		require.NoError(t, err)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "logging failed")
 	})
 }
 
@@ -663,7 +708,9 @@ func TestEngine_ProcessDeployment_TableDriven(t *testing.T) {
 			t.Parallel()
 
 			mockRepo := mocks.NewQueries(t)
-			engine := NewEngine(mockRepo, time.Second, nil)
+			engine := NewEngine(mockRepo, EngineConfig{
+				PollInterval: time.Second,
+			})
 
 			deployment := repository.Deployment{
 				ID:     tt.deploymentID,
@@ -715,7 +762,9 @@ func TestEngine_ProcessDeployment_ContextCancellation(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		deployment := repository.Deployment{
 			ID:     "dep-200",
@@ -747,7 +796,9 @@ func TestEngine_ProcessDeployment_ContextCancellation(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
@@ -769,7 +820,9 @@ func TestEngine_Run(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, 100*time.Millisecond, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: 100 * time.Millisecond,
+		})
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -796,7 +849,9 @@ func TestEngine_Run(t *testing.T) {
 
 		mockRepo := mocks.NewQueries(t)
 		pollInterval := 50 * time.Millisecond
-		engine := NewEngine(mockRepo, pollInterval, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: pollInterval,
+		})
 
 		ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
 		defer cancel()
@@ -818,7 +873,9 @@ func TestEngine_Run(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, 50*time.Millisecond, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: 50 * time.Millisecond,
+		})
 
 		ctx, cancel := context.WithTimeout(context.Background(), 120*time.Millisecond)
 		defer cancel()
@@ -836,7 +893,9 @@ func TestEngine_Run(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Hour, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Hour,
+		})
 
 		ctx, cancel := context.WithCancel(context.Background())
 
@@ -864,7 +923,9 @@ func TestEngine_handleTimeouts(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		engine.SetTimeout(StatusBuilding, 5*time.Minute)
 
@@ -899,7 +960,9 @@ func TestEngine_handleTimeouts(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		engine.SetTimeout(StatusBuilding, 10*time.Minute)
 
@@ -924,7 +987,9 @@ func TestEngine_handleTimeouts(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		oldTime := time.Now().Add(-1 * time.Hour)
 		terminalDeployments := []repository.Deployment{
@@ -947,7 +1012,9 @@ func TestEngine_handleTimeouts(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		oldTime := time.Now().Add(-1 * time.Hour)
 		deployment := repository.Deployment{
@@ -969,7 +1036,9 @@ func TestEngine_handleTimeouts(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		engine.SetTimeout(StatusBuilding, 5*time.Minute)
 
@@ -1004,7 +1073,9 @@ func TestEngine_handleTimeouts(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		expectedErr := errors.New("database error")
 		mockRepo.On("GetStaleDeployments", mock.Anything, mock.Anything).
@@ -1020,7 +1091,9 @@ func TestEngine_handleTimeouts(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		customTimeout := 1 * time.Minute
 		engine.SetTimeout(StatusBuilding, customTimeout)
@@ -1063,7 +1136,9 @@ func TestEngine_processWorkBatch(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		handler := &mockHandler{}
 		err := engine.RegisterHandler(StatusPending, handler)
@@ -1099,7 +1174,9 @@ func TestEngine_processWorkBatch(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		handler := &mockHandler{}
 		err := engine.RegisterHandler(StatusPending, handler)
@@ -1136,7 +1213,9 @@ func TestEngine_processWorkBatch(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		mockRepo.On("GetStaleDeployments", mock.Anything, mock.Anything).
 			Return([]repository.Deployment{}, nil)
@@ -1154,7 +1233,9 @@ func TestEngine_processWorkBatch(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		mockRepo.On("GetStaleDeployments", mock.Anything, mock.Anything).
 			Return([]repository.Deployment{}, nil)
@@ -1173,7 +1254,9 @@ func TestEngine_processWorkBatch(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		mockRepo.On("GetStaleDeployments", mock.Anything, mock.Anything).
 			Return([]repository.Deployment{}, nil).Once()
@@ -1191,7 +1274,9 @@ func TestEngine_processWorkBatch(t *testing.T) {
 		t.Parallel()
 
 		mockRepo := mocks.NewQueries(t)
-		engine := NewEngine(mockRepo, time.Second, nil)
+		engine := NewEngine(mockRepo, EngineConfig{
+			PollInterval: time.Second,
+		})
 
 		expectedErr := errors.New("timeout handling failed")
 		mockRepo.On("GetStaleDeployments", mock.Anything, mock.Anything).

@@ -2,12 +2,22 @@ package workflow
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+	"sync"
 	"time"
 
+	"github.com/oklog/ulid/v2"
+
 	"github.com/dmitrymomot/runlite/db/repository"
+)
+
+const (
+	// defaultStaleDeploymentWindow is the time window for checking stale deployments
+	defaultStaleDeploymentWindow = 30 * time.Minute
 )
 
 var (
@@ -17,44 +27,73 @@ var (
 	ErrNoHandler = errors.New("no handler registered for status")
 )
 
-// Engine orchestrates the deployment workflow
-// It polls for deployments needing work and executes registered handlers
-type Engine struct {
-	repo         repository.Querier
-	handlers     map[Status]Handler
-	timeouts     *TimeoutConfig
-	pollInterval time.Duration
-	logger       *slog.Logger
+// EngineConfig holds configuration for the workflow engine
+type EngineConfig struct {
+	PollInterval          time.Duration
+	StaleDeploymentWindow time.Duration
+	StatusTimeouts        *StatusTimeouts
+	Logger                *slog.Logger
 }
 
-// NewEngine creates a new workflow engine
-func NewEngine(repo repository.Querier, pollInterval time.Duration, logger *slog.Logger) *Engine {
-	if logger == nil {
-		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+// Engine orchestrates the deployment workflow.
+// It polls for deployments needing work and executes registered handlers.
+// Engine is safe for concurrent use; RegisterHandler and SetTimeout can be called
+// concurrently with ProcessDeployment.
+type Engine struct {
+	repo                  repository.Querier
+	handlers              map[Status]Handler
+	timeouts              *StatusTimeouts
+	pollInterval          time.Duration
+	staleDeploymentWindow time.Duration
+	logger                *slog.Logger
+	mu                    sync.RWMutex // protects handlers and timeouts
+}
+
+// NewEngine creates a new workflow engine with the provided configuration.
+// If config.Logger is nil, a no-op logger will be used.
+// If config.StatusTimeouts is nil, default timeouts will be used.
+// If config.StaleDeploymentWindow is 0, the default window will be used.
+func NewEngine(repo repository.Querier, config EngineConfig) *Engine {
+	if config.Logger == nil {
+		config.Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
+	if config.StatusTimeouts == nil {
+		config.StatusTimeouts = NewStatusTimeouts()
+	}
+	if config.StaleDeploymentWindow == 0 {
+		config.StaleDeploymentWindow = defaultStaleDeploymentWindow
 	}
 
 	return &Engine{
-		repo:         repo,
-		handlers:     make(map[Status]Handler),
-		timeouts:     NewTimeoutConfig(),
-		pollInterval: pollInterval,
-		logger:       logger,
+		repo:                  repo,
+		handlers:              map[Status]Handler{},
+		timeouts:              config.StatusTimeouts,
+		pollInterval:          config.PollInterval,
+		staleDeploymentWindow: config.StaleDeploymentWindow,
+		logger:                config.Logger,
 	}
 }
 
-// RegisterHandler registers a handler for a specific status
-// Only one handler can be registered per status
+// RegisterHandler registers a handler for a specific status.
+// Only one handler can be registered per status.
+// This method is safe for concurrent use.
 func (e *Engine) RegisterHandler(status Status, handler Handler) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	if _, exists := e.handlers[status]; exists {
-		return ErrHandlerAlreadyRegistered
+		return fmt.Errorf("%w: %s", ErrHandlerAlreadyRegistered, status)
 	}
 	e.handlers[status] = handler
 	e.logger.Info("handler registered", "status", status.String())
 	return nil
 }
 
-// SetTimeout sets the timeout duration for a specific status
+// SetTimeout sets the timeout duration for a specific status.
+// This method is safe for concurrent use.
 func (e *Engine) SetTimeout(status Status, duration time.Duration) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.timeouts.SetTimeout(status, duration)
 }
 
@@ -131,7 +170,10 @@ func (e *Engine) ProcessDeployment(ctx context.Context, deploymentID string) err
 		return nil
 	}
 
+	e.mu.RLock()
 	handler, exists := e.handlers[status]
+	e.mu.RUnlock()
+
 	if !exists {
 		// No handler registered - some statuses transition externally
 		e.logger.Debug("no handler for status", "deployment_id", deploymentID, "status", status)
@@ -152,7 +194,9 @@ func (e *Engine) ProcessDeployment(ctx context.Context, deploymentID string) err
 	var nextStatus Status
 	if err != nil {
 		nextStatus = transition.OnFailure
-		e.logError(ctx, deploymentID, status.String(), err)
+		if logErr := e.logError(ctx, deploymentID, status.String(), err); logErr != nil {
+			return fmt.Errorf("handler failed and logging failed: handler error: %w, log error: %v", err, logErr)
+		}
 		e.logger.Warn("handler failed",
 			"deployment_id", deploymentID,
 			"status", status,
@@ -160,7 +204,9 @@ func (e *Engine) ProcessDeployment(ctx context.Context, deploymentID string) err
 			"error", err)
 	} else {
 		nextStatus = transition.OnSuccess
-		e.logSuccess(ctx, deploymentID, status.String())
+		if logErr := e.logSuccess(ctx, deploymentID, status.String()); logErr != nil {
+			return fmt.Errorf("handler succeeded but logging failed: %w", logErr)
+		}
 		e.logger.Info("handler succeeded",
 			"deployment_id", deploymentID,
 			"status", status,
@@ -175,10 +221,10 @@ func (e *Engine) ProcessDeployment(ctx context.Context, deploymentID string) err
 }
 
 // handleTimeouts checks for deployments that have exceeded their timeout.
-// Fetches deployments created in the last 30 minutes to balance performance vs. coverage.
+// Fetches deployments created within the stale deployment window to balance performance vs. coverage.
 // Marks timed-out deployments as failed with a log entry.
 func (e *Engine) handleTimeouts(ctx context.Context) error {
-	threshold := time.Now().Add(-30 * time.Minute)
+	threshold := time.Now().Add(-e.staleDeploymentWindow)
 	staleDeployments, err := e.repo.GetStaleDeployments(ctx, threshold)
 	if err != nil {
 		return err
@@ -191,7 +237,10 @@ func (e *Engine) handleTimeouts(ctx context.Context) error {
 			continue
 		}
 
+		e.mu.RLock()
 		timeout, ok := e.timeouts.GetTimeout(status)
+		e.mu.RUnlock()
+
 		if !ok {
 			continue
 		}
@@ -204,8 +253,7 @@ func (e *Engine) handleTimeouts(ctx context.Context) error {
 				"age", age,
 				"timeout", timeout)
 
-			err := e.updateStatus(ctx, dep.ID, StatusFailed)
-			if err != nil {
+			if err := e.updateStatus(ctx, dep.ID, StatusFailed); err != nil {
 				e.logger.Error("failed to mark deployment as failed",
 					"deployment_id", dep.ID,
 					"error", err)
@@ -213,7 +261,11 @@ func (e *Engine) handleTimeouts(ctx context.Context) error {
 			}
 
 			timeoutErr := errors.New("deployment exceeded timeout")
-			e.logError(ctx, dep.ID, "timeout", timeoutErr)
+			if logErr := e.logError(ctx, dep.ID, "timeout", timeoutErr); logErr != nil {
+				e.logger.Error("failed to log timeout",
+					"deployment_id", dep.ID,
+					"error", logErr)
+			}
 		}
 	}
 
@@ -246,7 +298,8 @@ func (e *Engine) updateStatus(ctx context.Context, deploymentID string, status S
 }
 
 // logSuccess records a successful event in the deployment log.
-func (e *Engine) logSuccess(ctx context.Context, deploymentID, event string) {
+// Returns an error if log creation fails.
+func (e *Engine) logSuccess(ctx context.Context, deploymentID, event string) error {
 	msg := "completed successfully"
 	if err := e.repo.CreateDeploymentLog(ctx, repository.CreateDeploymentLogParams{
 		ID:           generateID(),
@@ -258,11 +311,14 @@ func (e *Engine) logSuccess(ctx context.Context, deploymentID, event string) {
 		e.logger.Error("failed to create log",
 			"deployment_id", deploymentID,
 			"error", err)
+		return fmt.Errorf("failed to create success log: %w", err)
 	}
+	return nil
 }
 
 // logError records a failed event in the deployment log.
-func (e *Engine) logError(ctx context.Context, deploymentID, event string, err error) {
+// Returns an error if log creation fails.
+func (e *Engine) logError(ctx context.Context, deploymentID, event string, err error) error {
 	errMsg := err.Error()
 	if logErr := e.repo.CreateDeploymentLog(ctx, repository.CreateDeploymentLogParams{
 		ID:           generateID(),
@@ -274,12 +330,13 @@ func (e *Engine) logError(ctx context.Context, deploymentID, event string, err e
 		e.logger.Error("failed to create log",
 			"deployment_id", deploymentID,
 			"error", logErr)
+		return fmt.Errorf("failed to create error log: %w", logErr)
 	}
+	return nil
 }
 
-// generateID generates a unique ID for log entries using timestamp and nanosecond precision.
-// TODO: Replace with proper ID generation (ULID, UUID, etc.) for better uniqueness guarantees
-// and to handle rapid sequential calls that might generate identical IDs.
+// generateID generates a unique ULID for log entries.
+// ULIDs are sortable, unique, and URL-safe.
 func generateID() string {
-	return time.Now().Format("20060102150405") + "-" + time.Now().Format("000000000")
+	return ulid.MustNew(ulid.Timestamp(time.Now()), rand.Reader).String()
 }
