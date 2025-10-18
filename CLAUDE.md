@@ -2,3 +2,4 @@
 - **Current Status**: Early development stage - project structure is being established.
 - **Tech stack:** go 1.25+, templ, sqlite, caddy, taskfile, litestream.
 - check build `go build -o runlite cmd/runlite/main.go > /dev/null 2>&1`
+- log/slog with json formatting - default logger across the whole app
