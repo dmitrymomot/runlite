@@ -38,10 +38,11 @@ go.work.sum
 .env
 
 # Editor/IDE
-# .idea/
-# .vscode/
+ .idea/
+ .vscode/
+ .zed/
 
 # other
-#docs/
-#CLAUDE*.md
-#AGENTS*.md
+docs/
+CLAUDE*.md
+AGENTS*.md
