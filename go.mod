@@ -2,7 +2,10 @@ module github.com/dmitrymomot/runlite
 
 go 1.25.3
 
-require github.com/stretchr/testify v1.11.1
+require (
+	github.com/oklog/ulid/v2 v2.1.1
+	github.com/stretchr/testify v1.11.1
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
