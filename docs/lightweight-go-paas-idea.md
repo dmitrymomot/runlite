@@ -17,12 +17,13 @@ Web-based PaaS for deploying Go binaries:
 ## Architecture
 
 ### Tech Stack
-- **Go 1.25+** - Main platform
+- **Go 1.25+** - Main platform + on-server builds
 - **SQLite** - App configurations storage
 - **Caddy v2** - Reverse proxy + automatic HTTPS
 - **Litestream** - SQLite backup to S3/local
 - **systemd** - Process supervision
 - **templ + htmx** - Web UI (server-side rendering)
+- **GitHub OAuth** - Authentication (single predefined username)
 
 ### Process Management
 - Each deployed app = systemd service
@@ -35,14 +36,24 @@ Web-based PaaS for deploying Go binaries:
 - Each app gets: repo URL, port, domain, env vars
 - TOML export/import for backup
 
+### Authentication
+- GitHub OAuth during installation
+- Single predefined username in config (`GITHUB_USERNAME=yourusername`)
+- OAuth token stored securely for GitHub API access
+- No password management needed
+
 ### Deployment Flow
-1. User adds app via web UI (repo URL + basic config)
-2. Runlite generates GitHub webhook URL
-3. On push/release, webhook triggers deployment
-4. Download binary from GitHub release
-5. Generate systemd unit
-6. Update Caddy reverse proxy config
-7. Start/restart service
+1. User logs in via GitHub OAuth
+2. Select repo from their GitHub repos list (via GitHub API)
+3. Configure: domain, port, env vars
+4. Runlite auto-creates GitHub webhook
+5. On push to main branch:
+   - Clone repo on server
+   - Build Go binary on server (`go build`)
+   - Generate/update systemd unit
+   - Update Caddy reverse proxy config
+   - Restart service
+6. Build logs shown in web UI
 
 ## Roadmap
 
@@ -53,20 +64,31 @@ Web-based PaaS for deploying Go binaries:
 - [x] Basic HTTP server structure
 - [x] GitHub Actions for releases
 
+**In Progress - Authentication:**
+- [ ] GitHub OAuth integration
+- [ ] Store allowed username in config
+- [ ] Secure token storage
+- [ ] Login/logout flow
+
 **In Progress - Web Control Panel:**
 - [ ] SQLite database schema for apps
 - [ ] Web UI framework (templ + htmx)
-- [ ] Dashboard: list apps, status
-- [ ] App creation form (repo URL, port, domain)
+- [ ] Dashboard: list apps, status, build logs
+- [ ] GitHub repos list (via API)
+- [ ] App creation: select repo, configure domain/port/env
 - [ ] Environment variables editor
-- [ ] Logs viewer (journalctl integration)
+- [ ] Logs viewer (build logs + journalctl)
 
 **In Progress - Core Deployment:**
+- [ ] Install Go compiler during runlite installation
 - [ ] GitHub webhook handler
-- [ ] Download binary from releases
+- [ ] Clone repository on webhook trigger
+- [ ] Build Go binary on server (`go build`)
+- [ ] Handle build errors and show in UI
 - [ ] Generate systemd unit for app
 - [ ] Start/stop/restart via web UI
-- [ ] Deployment status tracking
+- [ ] Deployment status and build logs tracking
+- [ ] Auto-create GitHub webhook via API
 
 **In Progress - Reverse Proxy:**
 - [ ] Caddy integration
@@ -82,11 +104,12 @@ Web-based PaaS for deploying Go binaries:
 
 ### Phase 2: Polish
 
-- [ ] Authentication (password or GitHub OAuth)
+- [ ] Multiple allowed GitHub usernames (team support)
 - [ ] Custom domains management
-- [ ] Deployment history
-- [ ] Health checks
+- [ ] Deployment history with rollback
+- [ ] Health checks and uptime monitoring
 - [ ] Email/webhook notifications
+- [ ] Pre-built binary support (optional alternative to builds)
 
 ### Phase 3: Advanced
 
@@ -97,26 +120,36 @@ Web-based PaaS for deploying Go binaries:
 
 ## Technical Decisions
 
+### ✅ Decided
+- **Authentication:** GitHub OAuth with single predefined username
+- **Builds:** On-server compilation (install Go compiler during setup)
+- **Repo Selection:** Browse GitHub repos via API (no manual URLs)
+- **Interface:** Web UI only (no CLI tools)
+- **Deployments:** Simple restart (no blue/green for MVP)
+- **Webhooks:** Auto-created via GitHub API
+
 ### MVP Scope
 **IN:**
-- Pre-built binaries only (from GitHub releases)
+- On-server Go builds
+- GitHub OAuth authentication
+- GitHub repos list integration
+- Auto-webhook creation
+- Build logs in UI
 - Web UI only (no CLI)
-- Simple restart deployments
-- Manual domain configuration
 
 **OUT (v2+):**
-- Server-side builds
-- CLI tools
+- Multiple users/teams
+- Pre-built binaries as alternative
 - Blue/green deployments
 - Preview deploys
 - Build queues
 
 ### Open Questions
-1. Web UI auth: Simple password, GitHub OAuth, or both?
-2. Database migrations: How to handle during deploys?
-3. Zero-downtime: Possible without containers?
-4. DNS: Integrate providers or manual setup?
-5. Secrets: Encrypted SQLite or env vars only?
+1. Database migrations: Run automatically or manual trigger?
+2. Zero-downtime: Worth implementing without containers?
+3. Build caching: Use Go build cache to speed up rebuilds?
+4. Secrets: Encrypted in SQLite or env vars only?
+5. Dependencies: Handle private Go modules?
 
 ---
 
