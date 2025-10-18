@@ -204,33 +204,6 @@ go build -ldflags "-X main.version=v1.2.3" -o runlite ./cmd/runlite
 ./runlite --version
 ```
 
-### Testing Installation After Release
-
-After creating a release, you can test the installation in a clean Docker environment:
-
-```bash
-# Start a Debian container with systemd
-docker run -d \
-  --name runlite-test \
-  --privileged \
-  -v /sys/fs/cgroup:/sys/fs/cgroup:ro \
-  debian:bookworm-slim \
-  /bin/bash -c "apt-get update -qq && apt-get install -y -qq systemd curl sudo && exec /lib/systemd/systemd"
-
-# Wait for systemd to start
-sleep 3
-
-# Test the installation
-docker exec -it runlite-test bash -c "\
-  curl -1sLf 'https://raw.githubusercontent.com/dmitrymomot/runlite/v0.0.1/scripts/install.sh' | sudo -E bash"
-
-# Test the service
-docker exec -it runlite-test curl http://localhost:8080
-
-# Clean up
-docker rm -f runlite-test
-```
-
 ## License
 
 [License TBD]

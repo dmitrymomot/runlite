@@ -16,6 +16,7 @@ runlite-*
 # Test artifacts
 /tmp/
 *.log
+/tests/
 
 # Test binary, built with `go test -c`
 *.test
