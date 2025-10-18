@@ -8,6 +8,7 @@ tasks:
     silent: true
     cmds:
       - sqlc generate -f db/sqlc.yml
+      - task: mocks
 
   migration:
     silent: true
@@ -17,3 +18,30 @@ tasks:
       GOOSE_MIGRATION_DIR: db/migrations
     cmds:
       - goose create {{.CLI_ARGS}} sql
+
+  format:
+    desc: Format code using gofmt, goimports, and betteralign
+    silent: true
+    aliases:
+      - fmt
+    cmds:
+      - go fmt ./...
+      - find . -type f -name '*.go' ! -name '*_templ.go' -exec goimports -w -local github.com/dmitrymomot/runlite {} +
+      - betteralign -fix -generated_files ./...
+
+  check:
+    desc: Run all code quality checks (vet, nilaway, golangci-lint)
+    silent: true
+    cmds:
+      - go vet ./...
+      - nilaway ./...
+      - golangci-lint run
+
+  mocks:
+    desc: Generate mocks for interfaces.
+    silent: true
+    cmds:
+      - mockery --config=testing/mockery.yml
+      - go fmt ./testing/...
+      - goimports -w -local github.com/dmitrymomot/runlite ./testing/
+      - betteralign -fix -generated_files ./testing/...
