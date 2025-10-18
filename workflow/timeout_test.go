@@ -7,16 +7,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewTimeoutConfig(t *testing.T) {
+func TestNewStatusTimeouts(t *testing.T) {
 	t.Parallel()
 
 	t.Run("creates config with default timeouts", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 
 		require.NotNil(t, config)
-		require.NotNil(t, config.defaults)
+		require.NotNil(t, config.durations)
 
 		expectedDefaults := map[Status]time.Duration{
 			StatusBuilding:        10 * time.Minute,
@@ -37,7 +37,7 @@ func TestNewTimeoutConfig(t *testing.T) {
 	t.Run("does not configure timeouts for non-timeout statuses", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 
 		nonTimeoutStatuses := []Status{
 			StatusPending,
@@ -57,8 +57,8 @@ func TestNewTimeoutConfig(t *testing.T) {
 	t.Run("creates independent instances", func(t *testing.T) {
 		t.Parallel()
 
-		config1 := NewTimeoutConfig()
-		config2 := NewTimeoutConfig()
+		config1 := NewStatusTimeouts()
+		config2 := NewStatusTimeouts()
 
 		config1.SetTimeout(StatusBuilding, 20*time.Minute)
 
@@ -68,7 +68,7 @@ func TestNewTimeoutConfig(t *testing.T) {
 	})
 }
 
-func TestTimeoutConfig_GetTimeout(t *testing.T) {
+func TestStatusTimeouts_GetTimeout(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -167,7 +167,7 @@ func TestTimeoutConfig_GetTimeout(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			config := NewTimeoutConfig()
+			config := NewStatusTimeouts()
 			timeout, ok := config.GetTimeout(tt.status)
 
 			require.Equal(t, tt.expectedExists, ok, "existence check mismatch")
@@ -178,7 +178,7 @@ func TestTimeoutConfig_GetTimeout(t *testing.T) {
 	t.Run("returns custom timeout after SetTimeout", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 		customDuration := 15 * time.Minute
 
 		config.SetTimeout(StatusBuilding, customDuration)
@@ -189,13 +189,13 @@ func TestTimeoutConfig_GetTimeout(t *testing.T) {
 	})
 }
 
-func TestTimeoutConfig_SetTimeout(t *testing.T) {
+func TestStatusTimeouts_SetTimeout(t *testing.T) {
 	t.Parallel()
 
 	t.Run("updates existing timeout", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 		newDuration := 20 * time.Minute
 
 		config.SetTimeout(StatusBuilding, newDuration)
@@ -208,7 +208,7 @@ func TestTimeoutConfig_SetTimeout(t *testing.T) {
 	t.Run("adds timeout for unconfigured status", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 		customDuration := 3 * time.Minute
 
 		_, ok := config.GetTimeout(StatusPending)
@@ -224,7 +224,7 @@ func TestTimeoutConfig_SetTimeout(t *testing.T) {
 	t.Run("handles zero duration", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 
 		config.SetTimeout(StatusBuilding, 0)
 
@@ -236,7 +236,7 @@ func TestTimeoutConfig_SetTimeout(t *testing.T) {
 	t.Run("handles negative duration", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 		negativeDuration := -5 * time.Minute
 
 		config.SetTimeout(StatusBuilding, negativeDuration)
@@ -249,7 +249,7 @@ func TestTimeoutConfig_SetTimeout(t *testing.T) {
 	t.Run("handles very large duration", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 		largeDuration := 365 * 24 * time.Hour // 1 year
 
 		config.SetTimeout(StatusBuilding, largeDuration)
@@ -262,7 +262,7 @@ func TestTimeoutConfig_SetTimeout(t *testing.T) {
 	t.Run("does not affect other timeouts", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 		originalStarting := 2 * time.Minute
 
 		config.SetTimeout(StatusBuilding, 30*time.Minute)
@@ -275,7 +275,7 @@ func TestTimeoutConfig_SetTimeout(t *testing.T) {
 	t.Run("allows multiple updates to same status", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 
 		config.SetTimeout(StatusBuilding, 15*time.Minute)
 		config.SetTimeout(StatusBuilding, 25*time.Minute)
@@ -287,7 +287,7 @@ func TestTimeoutConfig_SetTimeout(t *testing.T) {
 	})
 }
 
-func TestTimeoutConfig_HasTimeout(t *testing.T) {
+func TestStatusTimeouts_HasTimeout(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -371,7 +371,7 @@ func TestTimeoutConfig_HasTimeout(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			config := NewTimeoutConfig()
+			config := NewStatusTimeouts()
 			result := config.HasTimeout(tt.status)
 
 			require.Equal(t, tt.expected, result)
@@ -381,7 +381,7 @@ func TestTimeoutConfig_HasTimeout(t *testing.T) {
 	t.Run("returns true after SetTimeout on unconfigured status", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 
 		require.False(t, config.HasTimeout(StatusPending))
 
@@ -393,7 +393,7 @@ func TestTimeoutConfig_HasTimeout(t *testing.T) {
 	t.Run("returns true for zero duration timeout", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 
 		config.SetTimeout(StatusPending, 0)
 
@@ -403,7 +403,7 @@ func TestTimeoutConfig_HasTimeout(t *testing.T) {
 	t.Run("consistent with GetTimeout existence check", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 
 		allStatuses := []Status{
 			StatusPending,
@@ -430,13 +430,13 @@ func TestTimeoutConfig_HasTimeout(t *testing.T) {
 	})
 }
 
-func TestTimeoutConfig_Integration(t *testing.T) {
+func TestStatusTimeouts_Integration(t *testing.T) {
 	t.Parallel()
 
 	t.Run("complete workflow - query, modify, verify", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 
 		require.True(t, config.HasTimeout(StatusBuilding))
 		timeout, ok := config.GetTimeout(StatusBuilding)
@@ -454,7 +454,7 @@ func TestTimeoutConfig_Integration(t *testing.T) {
 	t.Run("add custom timeout for terminal status", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 
 		require.False(t, config.HasTimeout(StatusFailed))
 
@@ -469,7 +469,7 @@ func TestTimeoutConfig_Integration(t *testing.T) {
 	t.Run("all configured statuses have non-zero timeouts", func(t *testing.T) {
 		t.Parallel()
 
-		config := NewTimeoutConfig()
+		config := NewStatusTimeouts()
 
 		defaultConfiguredStatuses := []Status{
 			StatusBuilding,
