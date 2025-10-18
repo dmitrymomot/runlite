@@ -40,6 +40,7 @@ runlite/
 **Purpose:** Application entry point with minimal logic
 
 **Responsibilities:**
+
 - Parse command-line flags and environment variables
 - Load configuration
 - Initialize database connection
@@ -48,6 +49,7 @@ runlite/
 - Handle graceful shutdown on SIGTERM/SIGINT
 
 **Example flow:**
+
 ```go
 func main() {
     // Load config
@@ -72,23 +74,26 @@ func main() {
 **Purpose:** Authentication and authorization
 
 **Files:**
+
 - `oauth.go` - GitHub OAuth flow implementation
 - `middleware.go` - HTTP middleware for protected routes
 - `token.go` - OAuth token storage and validation
 
 **Key Functions:**
+
 - `HandleGitHubLogin()` - Initiate OAuth flow
 - `HandleGitHubCallback()` - Process OAuth callback
-- `ValidateUser(username)` - Check against allowed username
+- `ValidateUser(username)` - Check if username is in allowed usernames list
 - `RequireAuth()` - Middleware to protect routes
 - `StoreToken()` - Securely store OAuth token
 - `GetStoredToken()` - Retrieve token for GitHub API calls
 
 **Data Flow:**
+
 1. User visits `/login`
 2. Redirect to GitHub OAuth
 3. GitHub redirects to `/auth/callback`
-4. Validate username matches `GITHUB_USERNAME` config
+4. Validate username is in `AllowedUsernames` config (all allowed users have full access)
 5. Store OAuth token in database
 6. Set session cookie
 7. Redirect to dashboard
@@ -100,6 +105,7 @@ func main() {
 **Purpose:** Database operations and schema management
 
 **Files:**
+
 - `schema.go` - Table definitions and schema version
 - `migrations.go` - Database migrations
 - `queries.go` - Common query helpers
@@ -160,6 +166,7 @@ CREATE TABLE webhooks (
 ```
 
 **Key Functions:**
+
 - `Connect(path)` - Open database connection
 - `Migrate()` - Run pending migrations
 - `Transaction(fn)` - Execute function in transaction
@@ -171,11 +178,13 @@ CREATE TABLE webhooks (
 **Purpose:** Core business logic for applications
 
 **Files:**
+
 - `models.go` - Domain models (App, Deployment, etc.)
 - `service.go` - Business logic and orchestration
 - `repository.go` - Database operations (CRUD)
 
 **Models:**
+
 ```go
 type App struct {
     ID           int
@@ -202,6 +211,7 @@ type Deployment struct {
 ```
 
 **Service Functions:**
+
 - `CreateApp(app)` - Create new app (validates, creates webhook, deploys)
 - `DeleteApp(id)` - Delete app (stops service, removes systemd unit, deletes webhook)
 - `RestartApp(id)` - Restart app service
@@ -209,6 +219,7 @@ type Deployment struct {
 - `UpdateEnvVars(id, vars)` - Update environment variables
 
 **Repository Functions:**
+
 - `SaveApp(app)` - Insert/update app in database
 - `FindApp(id)` - Get app by ID
 - `ListApps()` - Get all apps
@@ -221,11 +232,13 @@ type Deployment struct {
 **Purpose:** Build and deployment engine
 
 **Files:**
+
 - `builder.go` - Git clone and Go build
 - `systemd.go` - systemd unit generation and management
 - `logs.go` - Build and runtime log capture
 
 **Build Process:**
+
 ```go
 func Build(app *app.App, commitSHA string) (*Deployment, error) {
     // 1. Create build directory
@@ -255,6 +268,7 @@ func Build(app *app.App, commitSHA string) (*Deployment, error) {
 ```
 
 **systemd Unit Template:**
+
 ```ini
 [Unit]
 Description={{.Name}} - Runlite App
@@ -281,6 +295,7 @@ WantedBy=multi-user.target
 ```
 
 **Key Functions:**
+
 - `Build(app, commitSHA)` - Full build process
 - `GenerateSystemdUnit(app)` - Create systemd unit file
 - `StartService(appName)` - Start app via systemctl
@@ -296,11 +311,13 @@ WantedBy=multi-user.target
 **Purpose:** GitHub API integration
 
 **Files:**
+
 - `client.go` - GitHub API client wrapper
 - `repos.go` - Repository operations
 - `webhooks.go` - Webhook management
 
 **Key Functions:**
+
 - `NewClient(token)` - Create authenticated GitHub client
 - `ListUserRepos()` - Get user's repositories
 - `CreateWebhook(repo, url, secret)` - Create webhook for repo
@@ -309,6 +326,7 @@ WantedBy=multi-user.target
 - `ParseWebhookPayload(body)` - Extract commit info from webhook
 
 **Webhook Payload Handling:**
+
 ```go
 type WebhookPayload struct {
     Ref        string // refs/heads/main
@@ -330,12 +348,14 @@ type WebhookPayload struct {
 **Purpose:** Caddy reverse proxy management
 
 **Files:**
+
 - `caddy.go` - Caddy process lifecycle
 - `config.go` - Dynamic route configuration
 
 **Caddy Integration Options:**
 
 **Option 1: Embedded Caddy (Recommended)**
+
 ```go
 import "github.com/caddyserver/caddy/v2"
 
@@ -350,6 +370,7 @@ func AddRoute(app *app.App) {
 ```
 
 **Option 2: Managed Process**
+
 ```go
 func Start() {
     // Write Caddyfile
@@ -362,30 +383,34 @@ func Start() {
 ```
 
 **Caddy Configuration:**
+
 ```json
 {
-  "apps": {
-    "http": {
-      "servers": {
-        "srv0": {
-          "listen": [":80", ":443"],
-          "routes": [
-            {
-              "match": [{"host": ["app.example.com"]}],
-              "handle": [{
-                "handler": "reverse_proxy",
-                "upstreams": [{"dial": "localhost:8001"}]
-              }]
+    "apps": {
+        "http": {
+            "servers": {
+                "srv0": {
+                    "listen": [":80", ":443"],
+                    "routes": [
+                        {
+                            "match": [{ "host": ["app.example.com"] }],
+                            "handle": [
+                                {
+                                    "handler": "reverse_proxy",
+                                    "upstreams": [{ "dial": "localhost:8001" }]
+                                }
+                            ]
+                        }
+                    ]
+                }
             }
-          ]
         }
-      }
     }
-  }
 }
 ```
 
 **Key Functions:**
+
 - `Start()` - Initialize Caddy
 - `AddApp(app)` - Add reverse proxy route
 - `RemoveApp(app)` - Remove route
@@ -398,21 +423,24 @@ func Start() {
 **Purpose:** Litestream backup integration
 
 **Files:**
+
 - `litestream.go` - Litestream process management
 - `config.go` - Backup configuration
 
 **Litestream Config Generation:**
+
 ```yaml
 dbs:
-  - path: /var/lib/runlite/apps/myapp/data.db
-    replicas:
-      - type: s3
-        bucket: my-backups
-        path: myapp
-        region: us-east-1
+    - path: /var/lib/runlite/apps/myapp/data.db
+      replicas:
+          - type: s3
+            bucket: my-backups
+            path: myapp
+            region: us-east-1
 ```
 
 **Key Functions:**
+
 - `Start()` - Start Litestream process
 - `AddDatabase(appName, dbPath, destination)` - Configure backup for app database
 - `RemoveDatabase(appName)` - Stop backing up database
@@ -425,6 +453,7 @@ dbs:
 **Purpose:** Web UI and HTTP handlers
 
 **Structure:**
+
 ```
 panel/
 ├── handlers/
@@ -442,6 +471,7 @@ panel/
 ```
 
 **Routes:**
+
 ```
 GET  /                          → Dashboard (requires auth)
 GET  /login                     → GitHub OAuth login
@@ -464,6 +494,7 @@ POST /webhooks/:app_id          → GitHub webhook receiver
 ```
 
 **templ Templates:**
+
 ```templ
 // layout.templ
 templ Layout(title string) {
@@ -502,10 +533,12 @@ templ Dashboard(apps []App) {
 **Purpose:** Configuration management
 
 **Files:**
+
 - `config.go` - Configuration struct and loading
 - `defaults.go` - Default values
 
 **Configuration:**
+
 ```go
 type Config struct {
     // Server
@@ -518,7 +551,7 @@ type Config struct {
     // GitHub OAuth
     GitHubClientID     string
     GitHubClientSecret string
-    AllowedUsername    string
+    AllowedUsernames   []string  // Multiple users with full access (no RBAC)
 
     // Paths
     AppsDir       string  // /var/lib/runlite/apps
@@ -531,23 +564,39 @@ type Config struct {
 
 func Load() *Config {
     return &Config{
-        Port:            getEnvInt("PORT", 8080),
-        DatabasePath:    getEnv("DATABASE_PATH", "/var/lib/runlite/runlite.db"),
-        GitHubClientID:  getEnv("GITHUB_CLIENT_ID", ""),
-        AllowedUsername: getEnv("GITHUB_USERNAME", ""),
-        AppsDir:         "/var/lib/runlite/apps",
-        BuildsDir:       "/var/lib/runlite/builds",
+        Port:             getEnvInt("PORT", 8080),
+        DatabasePath:     getEnv("DATABASE_PATH", "/var/lib/runlite/runlite.db"),
+        GitHubClientID:   getEnv("GITHUB_CLIENT_ID", ""),
+        AllowedUsernames: parseUsernames(getEnv("GITHUB_USERNAMES", "")),
+        AppsDir:          "/var/lib/runlite/apps",
+        BuildsDir:        "/var/lib/runlite/builds",
     }
+}
+
+// parseUsernames splits comma-separated usernames
+func parseUsernames(s string) []string {
+    if s == "" {
+        return []string{}
+    }
+    parts := strings.Split(s, ",")
+    result := make([]string, 0, len(parts))
+    for _, p := range parts {
+        if username := strings.TrimSpace(p); username != "" {
+            result = append(result, username)
+        }
+    }
+    return result
 }
 ```
 
 **Environment Variables:**
+
 ```bash
 PORT=8080
 DATABASE_PATH=/var/lib/runlite/runlite.db
 GITHUB_CLIENT_ID=xxx
 GITHUB_CLIENT_SECRET=xxx
-GITHUB_USERNAME=dmitrymomot
+GITHUB_USERNAMES=alice,bob,charlie  # Comma-separated list
 BACKUP_DESTINATION=s3://my-bucket/backups
 ```
 
@@ -652,6 +701,7 @@ GitHub Push → Webhook Endpoint
 ## Technical Decisions
 
 ### Why SQLite?
+
 - Single file database (easy backups)
 - No separate database server needed
 - Perfect for single-server deployments
@@ -659,6 +709,7 @@ GitHub Push → Webhook Endpoint
 - Litestream provides replication
 
 ### Why templ + htmx?
+
 - Server-side rendering (simple, fast)
 - No build step for frontend
 - Minimal JavaScript
@@ -666,6 +717,7 @@ GitHub Push → Webhook Endpoint
 - Works without JS enabled
 
 ### Why systemd?
+
 - Battle-tested process supervisor
 - Built into every modern Linux
 - Free logging via journalctl
@@ -673,6 +725,7 @@ GitHub Push → Webhook Endpoint
 - Zero custom code needed
 
 ### Why Build on Server?
+
 - Simpler UX (no CI/CD required)
 - More flexible (build any commit)
 - Still lightweight (~500MB for Go)
