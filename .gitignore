@@ -43,6 +43,7 @@ go.work.sum
 .zed/
 
 # other
+#!*.md
 docs/
 CLAUDE*.md
 AGENTS*.md
