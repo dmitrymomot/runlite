@@ -46,3 +46,4 @@ go.work.sum
 docs/
 CLAUDE*.md
 AGENTS*.md
+.DS_Store
