@@ -11,7 +11,7 @@
 # Project-specific binaries
 /runlite
 /cmd/runlite/runlite
-runlite-*
+runlite
 
 # Test artifacts
 /tmp/
