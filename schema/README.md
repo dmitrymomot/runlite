@@ -21,7 +21,7 @@ Add this comment at the top of your `runlite.yml`:
 # yaml-language-server: $schema=https://runlite.dev/schema/runlite.yml.json
 
 app:
-  name: my-app
+    name: my-app
 ```
 
 Or use local schema:
@@ -30,7 +30,7 @@ Or use local schema:
 # yaml-language-server: $schema=./schema/runlite.schema.json
 
 app:
-  name: my-app
+    name: my-app
 ```
 
 #### Option 2: VSCode Settings
@@ -39,11 +39,11 @@ Add to your `.vscode/settings.json`:
 
 ```json
 {
-  "yaml.schemas": {
-    "https://runlite.dev/schema/runlite.yml.json": "runlite.yml",
-    // Or use local schema:
-    "./schema/runlite.schema.json": "runlite.yml"
-  }
+    "yaml.schemas": {
+        "https://runlite.dev/schema/runlite.yml.json": "runlite.yml",
+        // Or use local schema:
+        "./schema/runlite.schema.json": "runlite.yml"
+    }
 }
 ```
 
@@ -53,9 +53,9 @@ Add to VSCode user settings (Cmd+Shift+P → "Preferences: Open Settings (JSON)"
 
 ```json
 {
-  "yaml.schemas": {
-    "https://runlite.dev/schema/runlite.yml.json": ["**/runlite.yml", "**/runlite.yaml"]
-  }
+    "yaml.schemas": {
+        "https://runlite.dev/schema/runlite.yml.json": ["**/runlite.yml", "**/runlite.yaml"]
+    }
 }
 ```
 
@@ -78,9 +78,9 @@ Add to `coc-settings.json`:
 
 ```json
 {
-  "yaml.schemas": {
-    "https://runlite.dev/schema/runlite.yml.json": "runlite.yml"
-  }
+    "yaml.schemas": {
+        "https://runlite.dev/schema/runlite.yml.json": "runlite.yml"
+    }
 }
 ```
 
@@ -94,7 +94,7 @@ Add this comment at the top of your `runlite.yml`:
 # yaml-language-server: $schema=https://runlite.dev/schema/runlite.yml.json
 
 app:
-  name: my-app
+    name: my-app
 ```
 
 #### Option 2: Zed Settings
@@ -103,17 +103,17 @@ Add to your `settings.json` (Cmd+, or Zed → Settings):
 
 ```json
 {
-  "lsp": {
-    "yaml-language-server": {
-      "settings": {
-        "yaml": {
-          "schemas": {
-            "https://runlite.dev/schema/runlite.yml.json": "runlite.yml"
-          }
+    "lsp": {
+        "yaml-language-server": {
+            "settings": {
+                "yaml": {
+                    "schemas": {
+                        "https://runlite.dev/schema/runlite.yml.json": "runlite.yml"
+                    }
+                }
+            }
         }
-      }
     }
-  }
 }
 ```
 
@@ -121,17 +121,17 @@ Or for local schema:
 
 ```json
 {
-  "lsp": {
-    "yaml-language-server": {
-      "settings": {
-        "yaml": {
-          "schemas": {
-            "./schema/runlite.schema.json": "runlite.yml"
-          }
+    "lsp": {
+        "yaml-language-server": {
+            "settings": {
+                "yaml": {
+                    "schemas": {
+                        "./schema/runlite.schema.json": "runlite.yml"
+                    }
+                }
+            }
         }
-      }
     }
-  }
 }
 ```
 
@@ -152,6 +152,7 @@ The schema validates:
 ### Auto-completion
 
 Type-ahead suggestions for:
+
 - All configuration keys
 - Common values (e.g., health paths, durations)
 - Template variables in `args`
@@ -159,6 +160,7 @@ Type-ahead suggestions for:
 ### Documentation on Hover
 
 Hover over any field to see:
+
 - Field description
 - Type information
 - Default values
@@ -167,6 +169,7 @@ Hover over any field to see:
 ### Error Detection
 
 Real-time error highlighting for:
+
 - Invalid app names
 - Absolute paths (when relative required)
 - Invalid duration formats
@@ -181,41 +184,41 @@ Real-time error highlighting for:
 # yaml-language-server: $schema=https://runlite.dev/schema/runlite.yml.json
 
 app:
-  name: my-app  # ✓ Valid
+    name: my-app # ✓ Valid
 
 build:
-  script: |
-    go build -o ./bin/server .
+    script: |
+        go build -o ./bin/server .
 
-  artifacts:
-    - ./bin/server  # ✓ Relative path
-    - source: ./public/
-      dest: ./static/
+    artifacts:
+        - ./bin/server # ✓ Relative path
+        - source: ./public/
+          dest: ./static/
 
 run:
-  command: ./bin/server  # ✓ Relative path
+    command: ./bin/server # ✓ Relative path
 
 health:
-  path: /health  # ✓ Starts with /
-  timeout: 30s   # ✓ Valid Go duration
+    path: /health # ✓ Starts with /
+    timeout: 30s # ✓ Valid Go duration
 ```
 
 ### Invalid Configuration (Schema Errors)
 
 ```yaml
 app:
-  name: my app!  # ✗ Invalid: spaces and special chars not allowed
+    name: my app! # ✗ Invalid: spaces and special chars not allowed
 
 build:
-  artifacts:
-    - /usr/bin/server  # ✗ Invalid: absolute path
+    artifacts:
+        - /usr/bin/server # ✗ Invalid: absolute path
 
 run:
-  command: /bin/server  # ✗ Invalid: must be relative
+    command: /bin/server # ✗ Invalid: must be relative
 
 health:
-  path: health  # ✗ Invalid: must start with /
-  timeout: invalid  # ✗ Invalid: not a duration
+    path: health # ✗ Invalid: must start with /
+    timeout: invalid # ✗ Invalid: not a duration
 ```
 
 ## Publishing to Schema Store
@@ -227,10 +230,10 @@ To make the schema available globally without configuration:
 
 ```json
 {
-  "name": "RunLite Configuration",
-  "description": "Configuration file for RunLite deployment platform",
-  "fileMatch": ["runlite.yml", "runlite.yaml"],
-  "url": "https://runlite.dev/schema/runlite.yml.json"
+    "name": "RunLite Configuration",
+    "description": "Configuration file for RunLite deployment platform",
+    "fileMatch": ["runlite.yml", "runlite.yaml"],
+    "url": "https://runlite.dev/schema/runlite.yml.json"
 }
 ```
 
@@ -248,32 +251,34 @@ All other sections (`build`, `run`, `health`, `database`, `static`, `deploy`) ar
 
 ### Field Patterns
 
-| Field | Pattern | Description |
-|-------|---------|-------------|
-| `app.name` | `^[a-zA-Z0-9_-]+$` | Alphanumeric, dash, underscore |
-| `*.path` | `^\\.\\/` | Must start with `./` |
-| `run.command` | `^\\.\\/` | Must start with `./` |
-| `health.path` | `^\\/` | Must start with `/` |
-| Durations | `^[0-9]+(ns\|us\|µs\|ms\|s\|m\|h)+$` | Go duration format |
+| Field         | Pattern                              | Description                    |
+| ------------- | ------------------------------------ | ------------------------------ |
+| `app.name`    | `^[a-zA-Z0-9_-]+$`                   | Alphanumeric, dash, underscore |
+| `*.path`      | `^\\.\\/`                            | Must start with `./`           |
+| `run.command` | `^\\.\\/`                            | Must start with `./`           |
+| `health.path` | `^\\/`                               | Must start with `/`            |
+| Durations     | `^[0-9]+(ns\|us\|µs\|ms\|s\|m\|h)+$` | Go duration format             |
 
 ### Artifacts Syntax
 
 Supports two formats:
 
 **Simple array:**
+
 ```yaml
 artifacts:
-  - ./bin/server
-  - ./public/
+    - ./bin/server
+    - ./public/
 ```
 
 **Object with rename:**
+
 ```yaml
 artifacts:
-  - source: ./bin/server
-    dest: ./server
-  - source: ./public/
-    dest: ./static/
+    - source: ./bin/server
+      dest: ./server
+    - source: ./public/
+      dest: ./static/
 ```
 
 ## Development
