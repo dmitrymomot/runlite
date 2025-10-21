@@ -40,3 +40,31 @@ func printWarning(msg string) {
 func printInfo(msg string) {
 	color.Cyan("→ %s", msg)
 }
+
+// errorString returns an error message with red color (for cli.Exit)
+//
+//nolint:unused // Will be used by command implementations
+func errorString(msg string) string {
+	return color.RedString("✗ %s", msg)
+}
+
+// successString returns a success message with green color
+//
+//nolint:unused // Will be used by command implementations
+func successString(msg string) string {
+	return color.GreenString("✓ %s", msg)
+}
+
+// warningString returns a warning message with yellow color
+//
+//nolint:unused // Will be used by command implementations
+func warningString(msg string) string {
+	return color.YellowString("⚠ %s", msg)
+}
+
+// infoString returns an info message with cyan color
+//
+//nolint:unused // Will be used by command implementations
+func infoString(msg string) string {
+	return color.CyanString("→ %s", msg)
+}
