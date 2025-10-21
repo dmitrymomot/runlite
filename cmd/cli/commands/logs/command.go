@@ -1,4 +1,4 @@
-package main
+package logs
 
 import (
 	"context"
@@ -6,10 +6,11 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-// logsCommand shows application logs
-func logsCommand() *cli.Command {
+// Command returns the logs command for displaying application logs.
+func Command() *cli.Command {
 	return &cli.Command{
 		Name:      "logs",
+		Category:  "Deployment",
 		Usage:     "Show application logs",
 		ArgsUsage: "APP",
 		Flags: []cli.Flag{
@@ -25,8 +26,10 @@ func logsCommand() *cli.Command {
 				Value:   100,
 			},
 		},
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			panic("not implemented")
-		},
+		Action: logsAction,
 	}
+}
+
+func logsAction(ctx context.Context, cmd *cli.Command) error {
+	panic("not implemented")
 }

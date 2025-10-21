@@ -2,10 +2,14 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/urfave/cli/v3"
+
+	"github.com/dmitrymomot/runlite/cmd/cli/commands/app"
+	"github.com/dmitrymomot/runlite/cmd/cli/commands/deploy"
+	"github.com/dmitrymomot/runlite/cmd/cli/commands/env"
+	"github.com/dmitrymomot/runlite/cmd/cli/commands/logs"
 )
 
 // version can be set at build time using:
@@ -13,54 +17,20 @@ import (
 var version = "dev"
 
 func main() {
-	// Create CLI app
-	app := &cli.Command{
-		Name:  "runlite",
-		Usage: "Lightweight deployment platform for Go applications",
+	cmd := &cli.Command{
+		Name:    "runlite",
+		Version: version,
+		Usage:   "Lightweight deployment platform for Go applications",
 		Commands: []*cli.Command{
-			// App management
-			appCreateCommand(),
-			appListCommand(),
-			appInfoCommand(),
-			appInitCommand(),
-
-			// Environment variables
-			envSetCommand(),
-			envGetCommand(),
-			envListCommand(),
-			envUnsetCommand(),
-			envEditCommand(),
-			envImportCommand(),
-			envExportCommand(),
-
-			// Deployment
-			deployCommand(),
-			rollbackCommand(),
-			restartCommand(),
-
-			// Logs
-			logsCommand(),
-
-			// Utility
-			versionCommand(),
+			app.Command(),
+			env.Command(),
+			deploy.Command(),
+			logs.Command(),
 		},
 	}
 
-	// Run CLI app
 	// Commands print their own error messages, so just exit on error
-	if err := app.Run(context.Background(), os.Args); err != nil {
+	if err := cmd.Run(context.Background(), os.Args); err != nil {
 		os.Exit(1)
-	}
-}
-
-// versionCommand shows version information
-func versionCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "version",
-		Usage: "Show version information",
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			fmt.Printf("runlite version %s\n", version)
-			return nil
-		},
 	}
 }

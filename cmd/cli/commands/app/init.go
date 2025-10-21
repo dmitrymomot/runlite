@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -10,54 +10,13 @@ import (
 
 	"github.com/urfave/cli/v3"
 
+	"github.com/dmitrymomot/runlite/cmd/cli/internal/ui"
 	"github.com/dmitrymomot/runlite/cmd/cli/stubs"
 )
 
-// appCreateCommand creates a new application
-func appCreateCommand() *cli.Command {
+func initCommand() *cli.Command {
 	return &cli.Command{
-		Name:      "app:create",
-		Usage:     "Create a new application",
-		ArgsUsage: "NAME",
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			panic("not implemented")
-		},
-	}
-}
-
-// appListCommand lists all applications
-func appListCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "app:list",
-		Usage: "List all applications",
-		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:  "json",
-				Usage: "Output as JSON",
-			},
-		},
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			panic("not implemented")
-		},
-	}
-}
-
-// appInfoCommand shows detailed application information
-func appInfoCommand() *cli.Command {
-	return &cli.Command{
-		Name:      "app:info",
-		Usage:     "Show detailed application information",
-		ArgsUsage: "NAME",
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			panic("not implemented")
-		},
-	}
-}
-
-// appInitCommand generates a runlite.yml configuration file
-func appInitCommand() *cli.Command {
-	return &cli.Command{
-		Name:      "app:init",
+		Name:      "init",
 		Usage:     "Generate a runlite.yml configuration file",
 		ArgsUsage: "[NAME]",
 		Flags: []cli.Flag{
@@ -72,30 +31,26 @@ func appInitCommand() *cli.Command {
 				Usage:   "Overwrite existing runlite.yml",
 			},
 		},
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			return runAppInit(cmd)
-		},
+		Action: initAction,
 	}
 }
 
-// runAppInit implements the app:init command logic
-func runAppInit(cmd *cli.Command) error {
+func initAction(ctx context.Context, cmd *cli.Command) error {
 	const configFileName = "runlite.yml"
 
-	// Check if runlite.yml already exists
+	// Check if runlite.yml already exists and reject unless --force flag is set
 	if _, err := os.Stat(configFileName); err == nil {
 		if !cmd.Bool("force") {
-			return cli.Exit(errorString(fmt.Sprintf("%s already exists. Use --force to overwrite.", configFileName)), 1)
+			return cli.Exit(ui.ErrorString(fmt.Sprintf("%s already exists. Use --force to overwrite.", configFileName)), 1)
 		}
 	}
 
-	// Get app name from flag, arg, or current directory
+	// Resolve app name: use flag > arg > current directory name
 	appName := cmd.String("name")
 	if appName == "" && cmd.Args().Len() > 0 {
 		appName = cmd.Args().Get(0)
 	}
 	if appName == "" {
-		// Use current directory name
 		cwd, err := os.Getwd()
 		if err != nil {
 			return fmt.Errorf("get working directory: %w", err)
@@ -103,23 +58,19 @@ func runAppInit(cmd *cli.Command) error {
 		appName = filepath.Base(cwd)
 	}
 
-	// Detect project type
 	projectType := detectProjectType()
+	ui.PrintInfo(fmt.Sprintf("Detected project type: %s", projectType))
+	ui.PrintInfo(fmt.Sprintf("Generating %s for app: %s", configFileName, appName))
 
-	printInfo(fmt.Sprintf("Detected project type: %s", projectType))
-	printInfo(fmt.Sprintf("Generating %s for app: %s", configFileName, appName))
-
-	// Generate config based on project type
 	config := generateConfig(appName, projectType)
 
-	// Write config file
 	if err := os.WriteFile(configFileName, []byte(config), 0644); err != nil {
 		return fmt.Errorf("write config file: %w", err)
 	}
 
-	printSuccess(fmt.Sprintf("Created %s", configFileName))
+	ui.PrintSuccess(fmt.Sprintf("Created %s", configFileName))
 
-	// Print next steps
+	// Display next steps from template
 	nextSteps, err := renderTemplate("next-steps.txt.tmpl", map[string]string{
 		"ConfigFileName": configFileName,
 		"AppName":        appName,
@@ -132,23 +83,20 @@ func runAppInit(cmd *cli.Command) error {
 	return nil
 }
 
-// detectProjectType detects the project type based on files in the current directory
+// detectProjectType detects the project type by checking for language-specific files (go.mod, package.json).
 func detectProjectType() string {
-	// Check for Go project
 	if _, err := os.Stat("go.mod"); err == nil {
 		return "go"
 	}
 
-	// Check for Node.js project
 	if _, err := os.Stat("package.json"); err == nil {
 		return "node"
 	}
 
-	// Default to Go
-	return "go"
+	return "unknown"
 }
 
-// generateConfig generates the runlite.yml content based on project type
+// generateConfig returns the appropriate runlite.yml template based on detected project type.
 func generateConfig(appName, projectType string) string {
 	switch projectType {
 	case "go":
@@ -160,7 +108,7 @@ func generateConfig(appName, projectType string) string {
 	}
 }
 
-// generateGoConfig generates a Go-specific configuration
+// generateGoConfig generates a Go project configuration template.
 func generateGoConfig(appName string) string {
 	config, err := renderTemplate("go.yml.tmpl", map[string]string{"AppName": appName})
 	if err != nil {
@@ -169,7 +117,7 @@ func generateGoConfig(appName string) string {
 	return config
 }
 
-// generateNodeConfig generates a Node.js-specific configuration
+// generateNodeConfig generates a Node.js project configuration template.
 func generateNodeConfig(appName string) string {
 	config, err := renderTemplate("nodejs.yml.tmpl", map[string]string{"AppName": appName})
 	if err != nil {
@@ -178,7 +126,7 @@ func generateNodeConfig(appName string) string {
 	return config
 }
 
-// generateGenericConfig generates a minimal generic configuration
+// generateGenericConfig generates a minimal generic configuration template.
 func generateGenericConfig(appName string) string {
 	config, err := renderTemplate("generic.yml.tmpl", map[string]string{"AppName": appName})
 	if err != nil {
@@ -187,7 +135,7 @@ func generateGenericConfig(appName string) string {
 	return config
 }
 
-// renderTemplate loads and renders a template from the embedded filesystem
+// renderTemplate loads a template from the embedded filesystem and renders it with the provided data.
 func renderTemplate(name string, data any) (string, error) {
 	tmplContent, err := stubs.FS.ReadFile(name)
 	if err != nil {
