@@ -1,0 +1,210 @@
+$schema: http://json-schema.org/draft-07/schema#
+$id: https://runlite.dev/schema/runlite.yml.json
+title: RunLite Configuration
+description: Configuration schema for RunLite deployment platform
+
+type: object
+required:
+  - app
+
+properties:
+  app:
+    type: object
+    description: Application identification
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        pattern: ^[a-zA-Z0-9_-]+$
+        description: Application identifier (alphanumeric, dash, underscore only)
+        examples:
+          - my-app
+          - api-server
+          - web_app
+
+  build:
+    type: object
+    description: Build configuration
+    properties:
+      script:
+        type: string
+        description: Build script to execute (inline bash script)
+        examples:
+          - |
+            #!/bin/bash
+            go build -o ./bin/server .
+
+      artifacts:
+        type: array
+        description: Files/directories to copy to release directory
+        items:
+          oneOf:
+            - type: string
+              pattern: ^\.\/
+              description: Path relative to build directory (simple syntax)
+              examples:
+                - ./bin/server
+                - ./public/
+                - ./migrations/
+            - type: object
+              description: Artifact with source and destination (renaming syntax)
+              required:
+                - source
+                - dest
+              properties:
+                source:
+                  type: string
+                  pattern: ^\.\/
+                  description: Source path relative to build directory
+                  examples:
+                    - ./bin/server
+                    - ./public/
+                dest:
+                  type: string
+                  pattern: ^\.\/
+                  description: Destination path relative to release directory
+                  examples:
+                    - ./server
+                    - ./static/
+
+  run:
+    type: object
+    description: Runtime configuration
+    properties:
+      command:
+        type: string
+        pattern: ^\.\/
+        description: Command to execute (must be relative path)
+        examples:
+          - ./server
+          - ./bin/api
+
+      args:
+        type: array
+        description: Command-line arguments (supports template variables)
+        items:
+          type: string
+        examples:
+          - - --port
+            - "{{.Port}}"
+
+  health:
+    type: object
+    description: Health check configuration
+    properties:
+      path:
+        type: string
+        pattern: ^\/
+        default: /health
+        description: HTTP health check endpoint (must start with /)
+        examples:
+          - /health
+          - /api/health
+          - /health/ready
+
+      timeout:
+        type: string
+        pattern: ^[0-9]+(ns|us|µs|ms|s|m|h)+$
+        default: 30s
+        description: Maximum time to wait for healthy status (Go duration format, max 10m)
+        examples:
+          - 30s
+          - 1m
+          - 45s
+
+      interval:
+        type: string
+        pattern: ^[0-9]+(ns|us|µs|ms|s|m|h)+$
+        default: 1s
+        description: Polling interval between checks (Go duration format)
+        examples:
+          - 1s
+          - 2s
+          - 500ms
+
+  database:
+    type: object
+    description: Database configuration
+    properties:
+      path:
+        type: string
+        pattern: ^\.\/
+        description: Database directory path (relative to release directory)
+        examples:
+          - ./databases
+          - ./data
+
+      file:
+        type: string
+        pattern: ^\.\/
+        description: Single database file path (relative to release directory)
+        examples:
+          - ./data/app.db
+          - ./main.db
+
+  static:
+    type: object
+    description: Static files configuration
+    properties:
+      path:
+        type: string
+        pattern: ^\.\/
+        description: Static files directory (relative to release directory)
+        examples:
+          - ./public
+          - ./static
+          - ./dist
+
+  deploy:
+    type: object
+    description: Deployment configuration
+    properties:
+      drain_period:
+        type: string
+        pattern: ^[0-9]+(ns|us|µs|ms|s|m|h)+$
+        default: 30s
+        description: Grace period before stopping old deployment (Go duration format, max 5m)
+        examples:
+          - 30s
+          - 1m
+          - 60s
+
+additionalProperties: false
+
+examples:
+  - # Minimal Go app
+    app:
+      name: simple-app
+
+  - # Go app with custom build
+    app:
+      name: api-server
+    build:
+      script: |
+        go build -o ./bin/server .
+      artifacts:
+        - ./bin/server
+    run:
+      command: ./bin/server
+    health:
+      path: /health
+      timeout: 30s
+
+  - # Node.js app
+    app:
+      name: node-api
+    build:
+      script: |
+        npm ci
+        npm run build
+        npm prune --production
+      artifacts:
+        - ./dist/
+        - ./node_modules/
+        - ./package.json
+    run:
+      command: node dist/index.js
+    health:
+      path: /health
+      timeout: 60s
