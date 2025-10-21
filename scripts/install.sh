@@ -226,20 +226,72 @@ install_caddy() {
 	}
 }
 
-# HTTP to HTTPS redirect
+# HTTP handler - serve example app for IP-based access
 :80 {
-	# Redirect all HTTP traffic to HTTPS
-	redir https://{host}{uri} permanent
+	# Serve example app for IP-based access or fallback
+	root * /var/lib/runlite/apps/example
+	file_server
+	try_files {path} /index.html
+
+	# Also support ACME HTTP-01 challenge for domain verification
+	# This allows Let's Encrypt to verify domains via HTTP
 }
 EOF
     fi
 
+    # Create Caddy home directory for autosave.json (config persistence)
+    log_info "Creating Caddy data directory..."
+    mkdir -p /var/lib/caddy/.local/share/caddy
+    chown -R caddy:caddy /var/lib/caddy
+
+    # Create custom systemd service with --resume flag for config persistence
+    log_info "Creating Caddy systemd service with config persistence..."
+    cat > /etc/systemd/system/caddy.service <<'EOF'
+[Unit]
+Description=Caddy Web Server (API Mode with Config Persistence)
+Documentation=https://caddyserver.com/docs/
+After=network-online.target
+Wants=network-online.target systemd-networkd-wait-online.service
+
+[Service]
+Type=notify
+User=caddy
+Group=caddy
+ExecStart=/usr/bin/caddy run --environ --resume
+ExecReload=/usr/bin/caddy reload --force
+TimeoutStopSec=5s
+LimitNOFILE=1048576
+LimitNPROC=512
+PrivateTmp=true
+ProtectSystem=full
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Reload systemd to recognize new service
+    systemctl daemon-reload
+
     # Enable and start Caddy
     log_info "Enabling and starting Caddy service..."
     systemctl enable caddy
-    systemctl restart caddy
+    systemctl start caddy
 
-    log_info "Caddy installed and configured"
+    # Wait for Caddy to start
+    sleep 2
+
+    # Load initial configuration from Caddyfile
+    log_info "Loading initial configuration..."
+    if caddy load --config /etc/caddy/Caddyfile --adapter caddyfile 2>/dev/null; then
+        log_info "✓ Initial configuration loaded successfully"
+    else
+        log_warn "Failed to load configuration via API, restarting service..."
+        systemctl restart caddy
+    fi
+
+    log_info "Caddy installed and configured with persistent storage"
 }
 
 install_litestream() {
@@ -437,6 +489,75 @@ create_directories() {
     log_info "Directories created"
 }
 
+install_example_app() {
+    log_info "Installing example app..."
+
+    # Create example app directory
+    mkdir -p "${DATA_DIR}/apps/example"
+
+    # Try to download example app from GitHub
+    local example_url="https://raw.githubusercontent.com/${GITHUB_REPO}/main/scripts/config/example/index.html"
+
+    if ! curl -L -f -o "${DATA_DIR}/apps/example/index.html" "$example_url"; then
+        log_warn "Failed to download example app from GitHub"
+        log_info "Creating embedded example app..."
+
+        # Fallback: create embedded example app
+        cat > "${DATA_DIR}/apps/example/index.html" <<'EXAMPLE_EOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Runlite</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-xl p-8">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 mb-4">
+                Welcome to <span class="text-indigo-600">Runlite</span> 🚀
+            </h1>
+            <div class="flex items-center justify-center space-x-2 mb-4">
+                <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <span class="text-lg text-gray-700">System Online</span>
+            </div>
+            <p class="text-gray-600">Your Go PaaS is up and running!</p>
+        </div>
+
+        <div class="space-y-4 mb-8">
+            <div class="border-l-4 border-indigo-600 pl-4">
+                <h3 class="font-semibold text-gray-900 mb-2">Quick Start</h3>
+                <div class="bg-gray-900 text-gray-100 p-3 rounded font-mono text-sm">
+                    runlite domain add yourdomain.com<br>
+                    runlite app create myapp<br>
+                    runlite deploy
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <a href="https://github.com/dmitrymomot/runlite" target="_blank"
+               class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                View Documentation
+            </a>
+        </div>
+
+        <div class="mt-8 pt-6 border-t text-center text-sm text-gray-600">
+            Powered by Caddy, Litestream, and Go
+        </div>
+    </div>
+</body>
+</html>
+EXAMPLE_EOF
+    fi
+
+    # Set proper permissions
+    chmod 644 "${DATA_DIR}/apps/example/index.html"
+
+    log_info "✓ Example app installed at ${DATA_DIR}/apps/example/"
+}
+
 install_systemd_service() {
     log_info "Installing systemd service..."
 
@@ -570,6 +691,10 @@ show_status() {
     if [[ "$all_services_ok" == "true" ]]; then
         log_info "Installation complete!"
         echo ""
+        echo "Quick Start:"
+        echo "  - Example app: http://$(hostname -I | awk '{print $1}' || echo 'localhost')"
+        echo "  - Test locally: curl http://localhost"
+        echo ""
         echo "Next steps:"
         echo "  - View runlite logs: journalctl -u runlite -f"
         echo "  - View domain registry logs: journalctl -u runlite-domain-registry -f"
@@ -620,6 +745,7 @@ main() {
     download_domain_registry_binary "$version" "$platform"
 
     create_directories
+    install_example_app
 
     install_systemd_service
     install_domain_registry_service
