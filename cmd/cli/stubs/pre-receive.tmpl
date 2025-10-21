@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -e
+set -o pipefail
+
+cat | RUNLITE_DATA_DIR="{{.DataDir}}" runlite deploy hook {{.AppName}}
