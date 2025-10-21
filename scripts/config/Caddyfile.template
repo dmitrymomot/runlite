@@ -50,8 +50,13 @@
 	}
 }
 
-# HTTP to HTTPS redirect
+# HTTP handler - serve example app for IP-based access
 :80 {
-	# Redirect all HTTP traffic to HTTPS
-	redir https://{host}{uri} permanent
+	# Serve example app for IP-based access or fallback
+	root * /var/lib/runlite/apps/example
+	file_server
+	try_files {path} /index.html
+
+	# Also support ACME HTTP-01 challenge for domain verification
+	# This allows Let's Encrypt to verify domains via HTTP
 }
