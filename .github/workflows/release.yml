@@ -32,27 +32,39 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          # Build for linux/amd64
+          # Build runlite for linux/amd64
           GOOS=linux GOARCH=amd64 go build \
             -ldflags "-X main.version=${VERSION}" \
             -o runlite-linux-amd64 \
             ./cmd/runlite
 
-          # Build for linux/arm64
+          # Build runlite for linux/arm64
           GOOS=linux GOARCH=arm64 go build \
             -ldflags "-X main.version=${VERSION}" \
             -o runlite-linux-arm64 \
             ./cmd/runlite
 
+          # Build domain-registry for linux/amd64
+          GOOS=linux GOARCH=amd64 go build \
+            -ldflags "-X main.version=${VERSION}" \
+            -o runlite-domain-registry-linux-amd64 \
+            ./cmd/domain-registry
+
+          # Build domain-registry for linux/arm64
+          GOOS=linux GOARCH=arm64 go build \
+            -ldflags "-X main.version=${VERSION}" \
+            -o runlite-domain-registry-linux-arm64 \
+            ./cmd/domain-registry
+
       - name: Create archives
         run: |
-          # Create tar.gz for linux/amd64
+          # Create tar.gz for runlite linux/amd64
           tar -czf runlite_linux_amd64.tar.gz runlite-linux-amd64
           mv runlite-linux-amd64 runlite
           tar -czf runlite_linux_amd64_with_name.tar.gz runlite
           mv runlite runlite-linux-amd64
 
-          # Create tar.gz for linux/arm64
+          # Create tar.gz for runlite linux/arm64
           tar -czf runlite_linux_arm64.tar.gz runlite-linux-arm64
           mv runlite-linux-arm64 runlite
           tar -czf runlite_linux_arm64_with_name.tar.gz runlite
@@ -62,10 +74,28 @@ jobs:
           mv runlite_linux_amd64_with_name.tar.gz runlite_linux_amd64.tar.gz
           mv runlite_linux_arm64_with_name.tar.gz runlite_linux_arm64.tar.gz
 
+          # Create tar.gz for domain-registry linux/amd64
+          tar -czf runlite-domain-registry_linux_amd64.tar.gz runlite-domain-registry-linux-amd64
+          mv runlite-domain-registry-linux-amd64 runlite-domain-registry
+          tar -czf runlite-domain-registry_linux_amd64_with_name.tar.gz runlite-domain-registry
+          mv runlite-domain-registry runlite-domain-registry-linux-amd64
+
+          # Create tar.gz for domain-registry linux/arm64
+          tar -czf runlite-domain-registry_linux_arm64.tar.gz runlite-domain-registry-linux-arm64
+          mv runlite-domain-registry-linux-arm64 runlite-domain-registry
+          tar -czf runlite-domain-registry_linux_arm64_with_name.tar.gz runlite-domain-registry
+          mv runlite-domain-registry runlite-domain-registry-linux-arm64
+
+          # Use the version with "runlite-domain-registry" name for final archives
+          mv runlite-domain-registry_linux_amd64_with_name.tar.gz runlite-domain-registry_linux_amd64.tar.gz
+          mv runlite-domain-registry_linux_arm64_with_name.tar.gz runlite-domain-registry_linux_arm64.tar.gz
+
       - name: Generate checksums
         run: |
           sha256sum runlite_linux_amd64.tar.gz > checksums.txt
           sha256sum runlite_linux_arm64.tar.gz >> checksums.txt
+          sha256sum runlite-domain-registry_linux_amd64.tar.gz >> checksums.txt
+          sha256sum runlite-domain-registry_linux_arm64.tar.gz >> checksums.txt
 
       - name: Update install.sh version
         env:
@@ -83,6 +113,8 @@ jobs:
           files: |
             runlite_linux_amd64.tar.gz
             runlite_linux_arm64.tar.gz
+            runlite-domain-registry_linux_amd64.tar.gz
+            runlite-domain-registry_linux_arm64.tar.gz
             checksums.txt
             scripts/install.sh
           body: |
@@ -98,14 +130,24 @@ jobs:
 
             Download the appropriate binary for your platform:
 
+            **Runlite CLI:**
             - **Linux AMD64**: `runlite_linux_amd64.tar.gz`
             - **Linux ARM64**: `runlite_linux_arm64.tar.gz`
+
+            **Domain Registry:**
+            - **Linux AMD64**: `runlite-domain-registry_linux_amd64.tar.gz`
+            - **Linux ARM64**: `runlite-domain-registry_linux_arm64.tar.gz`
 
             Extract and install:
 
             ```bash
+            # Install runlite
             tar -xzf runlite_linux_amd64.tar.gz
             sudo install -m 755 runlite /usr/local/bin/runlite
+
+            # Install domain-registry
+            tar -xzf runlite-domain-registry_linux_amd64.tar.gz
+            sudo install -m 755 runlite-domain-registry /usr/local/bin/runlite-domain-registry
             ```
 
             ### Verify Installation
@@ -113,6 +155,9 @@ jobs:
             ```bash
             runlite --version
             # Should output: runlite v${{ steps.version.outputs.VERSION }}
+
+            runlite-domain-registry --version
+            # Should output: runlite-domain-registry v${{ steps.version.outputs.VERSION }}
             ```
 
             ## Checksums
