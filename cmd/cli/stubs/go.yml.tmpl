@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://runlite.dev/schema/runlite.yml.json
+# RunLite Configuration
+# See: https://github.com/dmitrymomot/runlite/blob/main/docs/config-file.md
+
+app:
+  name: {{.AppName}}
+
+build:
+  # Build script (optional - defaults to: go build -o ./app .)
+  script: |
+    go build -o ./bin/server .
+
+  # Copy only necessary files to release directory
+  artifacts:
+    - ./bin/server
+
+run:
+  # Command to execute (relative to release directory)
+  command: ./bin/server
+
+  # Optional: Command arguments
+  # args:
+  #   - --port
+  #   - "{{ "{{.Port}}" }}"
+
+health:
+  # Health check endpoint
+  path: /health
+  timeout: 30s
+  interval: 1s
+
+# Optional: Database configuration
+# database:
+#   path: ./databases
+
+# Optional: Static files
+# static:
+#   path: ./public
+
+# Optional: Deployment settings
+# deploy:
+#   drain_period: 30s

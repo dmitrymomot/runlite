@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+	"text/template"
 
 	"github.com/urfave/cli/v3"
+
+	"github.com/dmitrymomot/runlite/cmd/cli/stubs"
 )
 
 // appCreateCommand creates a new application
@@ -114,16 +118,16 @@ func runAppInit(cmd *cli.Command) error {
 	}
 
 	printSuccess(fmt.Sprintf("Created %s", configFileName))
-	fmt.Printf(`
-Next steps:
-  1. Review and customize %s
-  2. Commit the file to your repository:
-     git add %s && git commit -m "Add runlite config"
-  3. Add your RunLite server as a remote:
-     git remote add runlite git@server:/home/git/apps/%s.git
-  4. Deploy:
-     git push runlite main
-`, configFileName, configFileName, appName)
+
+	// Print next steps
+	nextSteps, err := renderTemplate("next-steps.txt.tmpl", map[string]string{
+		"ConfigFileName": configFileName,
+		"AppName":        appName,
+	})
+	if err != nil {
+		return fmt.Errorf("render next steps: %w", err)
+	}
+	fmt.Print(nextSteps)
 
 	return nil
 }
@@ -158,116 +162,47 @@ func generateConfig(appName, projectType string) string {
 
 // generateGoConfig generates a Go-specific configuration
 func generateGoConfig(appName string) string {
-	return fmt.Sprintf(`# yaml-language-server: $schema=https://runlite.dev/schema/runlite.yml.json
-# RunLite Configuration
-# See: https://github.com/dmitrymomot/runlite/blob/main/docs/config-file.md
-
-app:
-  name: %s
-
-build:
-  # Build script (optional - defaults to: go build -o ./app .)
-  script: |
-    go build -o ./bin/server .
-
-  # Copy only necessary files to release directory
-  artifacts:
-    - ./bin/server
-
-run:
-  # Command to execute (relative to release directory)
-  command: ./bin/server
-
-  # Optional: Command arguments
-  # args:
-  #   - --port
-  #   - "{{.Port}}"
-
-health:
-  # Health check endpoint
-  path: /health
-  timeout: 30s
-  interval: 1s
-
-# Optional: Database configuration
-# database:
-#   path: ./databases
-
-# Optional: Static files
-# static:
-#   path: ./public
-
-# Optional: Deployment settings
-# deploy:
-#   drain_period: 30s
-`, appName)
+	config, err := renderTemplate("go.yml.tmpl", map[string]string{"AppName": appName})
+	if err != nil {
+		panic(fmt.Sprintf("render go template: %v", err))
+	}
+	return config
 }
 
 // generateNodeConfig generates a Node.js-specific configuration
 func generateNodeConfig(appName string) string {
-	return fmt.Sprintf(`# yaml-language-server: $schema=https://runlite.dev/schema/runlite.yml.json
-# RunLite Configuration
-# See: https://github.com/dmitrymomot/runlite/blob/main/docs/config-file.md
-
-app:
-  name: %s
-
-build:
-  script: |
-    npm ci
-    npm run build
-    npm prune --production
-
-  # Copy build output and dependencies
-  artifacts:
-    - ./dist/
-    - ./node_modules/
-    - ./package.json
-
-run:
-  # Command to execute (relative to release directory)
-  command: node dist/index.js
-
-health:
-  path: /health
-  timeout: 60s
-  interval: 2s
-
-# Optional: Static files
-# static:
-#   path: ./public
-
-# Optional: Deployment settings
-# deploy:
-#   drain_period: 30s
-`, appName)
+	config, err := renderTemplate("nodejs.yml.tmpl", map[string]string{"AppName": appName})
+	if err != nil {
+		panic(fmt.Sprintf("render nodejs template: %v", err))
+	}
+	return config
 }
 
 // generateGenericConfig generates a minimal generic configuration
 func generateGenericConfig(appName string) string {
-	return fmt.Sprintf(`# yaml-language-server: $schema=https://runlite.dev/schema/runlite.yml.json
-# RunLite Configuration
-# See: https://github.com/dmitrymomot/runlite/blob/main/docs/config-file.md
+	config, err := renderTemplate("generic.yml.tmpl", map[string]string{"AppName": appName})
+	if err != nil {
+		panic(fmt.Sprintf("render generic template: %v", err))
+	}
+	return config
+}
 
-app:
-  name: %s
+// renderTemplate loads and renders a template from the embedded filesystem
+func renderTemplate(name string, data any) (string, error) {
+	tmplContent, err := stubs.FS.ReadFile(name)
+	if err != nil {
+		return "", fmt.Errorf("read template %s: %w", name, err)
+	}
 
-# Optional: Build configuration
-# build:
-#   script: |
-#     # Your build commands here
-#     make build
-#
-#   artifacts:
-#     - ./bin/app
+	tmpl, err := template.New(name).Parse(string(tmplContent))
+	if err != nil {
+		return "", fmt.Errorf("parse template %s: %w", name, err)
+	}
 
-# Optional: Run configuration
-# run:
-#   command: ./bin/app
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("execute template %s: %w", name, err)
+	}
 
-# Optional: Health check
-# health:
-#   path: /health
-#   timeout: 30s
-`, appName)
+	return buf.String(), nil
 }
