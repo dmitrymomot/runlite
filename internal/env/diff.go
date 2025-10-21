@@ -5,14 +5,15 @@ import (
 	"strings"
 )
 
-// DiffResult represents the differences between two sets of environment variables
+// DiffResult represents the differences between two sets of environment variables.
+// Added, Modified, and Removed track new, changed, and deleted variables respectively.
 type DiffResult struct {
 	Added    map[string]string
 	Modified map[string]string
 	Removed  map[string]string
 }
 
-// Diff compares two sets of environment variables and returns the differences
+// Diff compares two sets of environment variables and returns a DiffResult with categorized changes.
 func Diff(old, new map[string]string) *DiffResult {
 	result := &DiffResult{
 		Added:    make(map[string]string),
@@ -20,7 +21,7 @@ func Diff(old, new map[string]string) *DiffResult {
 		Removed:  make(map[string]string),
 	}
 
-	// Find added and modified
+	// Categorize new/modified variables
 	for key, newValue := range new {
 		if oldValue, exists := old[key]; exists {
 			if oldValue != newValue {
@@ -31,7 +32,7 @@ func Diff(old, new map[string]string) *DiffResult {
 		}
 	}
 
-	// Find removed
+	// Categorize removed variables
 	for key, value := range old {
 		if _, exists := new[key]; !exists {
 			result.Removed[key] = value
@@ -41,12 +42,14 @@ func Diff(old, new map[string]string) *DiffResult {
 	return result
 }
 
-// IsEmpty returns true if there are no changes
+// IsEmpty reports whether the diff contains any changes.
 func (d *DiffResult) IsEmpty() bool {
 	return len(d.Added) == 0 && len(d.Modified) == 0 && len(d.Removed) == 0
 }
 
-// Format formats the diff result as a human-readable string
+// Format returns a human-readable string representation of the diff.
+// Added variables are prefixed with "+", modified with "~", and removed with "-".
+// Long values are truncated for readability.
 func (d *DiffResult) Format() string {
 	if d.IsEmpty() {
 		return "No changes"
@@ -54,13 +57,12 @@ func (d *DiffResult) Format() string {
 
 	var builder strings.Builder
 
-	// Sort keys for consistent output
+	// Helper to sort keys alphabetically
 	sortKeys := func(m map[string]string) []string {
 		keys := make([]string, 0, len(m))
 		for k := range m {
 			keys = append(keys, k)
 		}
-		// Simple alphabetical sort
 		for i := 0; i < len(keys); i++ {
 			for j := i + 1; j < len(keys); j++ {
 				if keys[i] > keys[j] {
@@ -71,7 +73,7 @@ func (d *DiffResult) Format() string {
 		return keys
 	}
 
-	// Added variables
+	// Format added variables with "+" prefix
 	if len(d.Added) > 0 {
 		for _, key := range sortKeys(d.Added) {
 			value := d.Added[key]
@@ -79,7 +81,7 @@ func (d *DiffResult) Format() string {
 		}
 	}
 
-	// Modified variables
+	// Format modified variables with "~" prefix
 	if len(d.Modified) > 0 {
 		for _, key := range sortKeys(d.Modified) {
 			value := d.Modified[key]
@@ -87,7 +89,7 @@ func (d *DiffResult) Format() string {
 		}
 	}
 
-	// Removed variables
+	// Format removed variables with "-" prefix
 	if len(d.Removed) > 0 {
 		for _, key := range sortKeys(d.Removed) {
 			builder.WriteString(fmt.Sprintf("  - %s\n", key))
@@ -97,11 +99,12 @@ func (d *DiffResult) Format() string {
 	return builder.String()
 }
 
-// formatValue formats a value for display (truncate long values)
+// formatValue returns a display-friendly value string, truncating long values and
+// summarizing multi-line values to prevent verbose output.
 func formatValue(value string) string {
 	const maxLen = 60
 
-	// Handle multi-line values
+	// Multi-line values: show first line and line count
 	if strings.Contains(value, "\n") {
 		lines := strings.Split(value, "\n")
 		if len(lines) > 1 {
@@ -109,7 +112,7 @@ func formatValue(value string) string {
 		}
 	}
 
-	// Truncate long single-line values
+	// Single-line values: truncate if too long
 	if len(value) > maxLen {
 		return value[:maxLen] + "..."
 	}

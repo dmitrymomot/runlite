@@ -8,7 +8,8 @@ import (
 	"github.com/dmitrymomot/runlite/internal/config"
 )
 
-// Load reads environment variables from the app's env file
+// Load reads environment variables from the app's env file.
+// Returns an empty map if the file doesn't exist.
 func Load(appName string) (map[string]string, error) {
 	if err := config.ValidateAppName(appName); err != nil {
 		return nil, err
@@ -16,7 +17,7 @@ func Load(appName string) (map[string]string, error) {
 
 	envPath := config.GetAppEnvPath(appName)
 
-	// If file doesn't exist, return empty map
+	// File doesn't exist: return empty map (not an error)
 	if _, err := os.Stat(envPath); os.IsNotExist(err) {
 		return make(map[string]string), nil
 	}
@@ -34,13 +35,13 @@ func Load(appName string) (map[string]string, error) {
 	return vars, nil
 }
 
-// Save writes environment variables to the app's env file atomically
+// Save writes environment variables to the app's env file atomically using a temp file + rename strategy.
+// This ensures consistency and prevents corruption during writes.
 func Save(appName string, vars map[string]string) error {
 	if err := config.ValidateAppName(appName); err != nil {
 		return err
 	}
 
-	// Ensure app directory exists
 	if err := config.EnsureAppDir(appName); err != nil {
 		return err
 	}
@@ -48,21 +49,21 @@ func Save(appName string, vars map[string]string) error {
 	envPath := config.GetAppEnvPath(appName)
 	content := Format(vars)
 
-	// Write atomically using temp file + rename
+	// Write to temp file first, then atomically rename to target location
 	tmpFile := envPath + ".tmp"
 	if err := os.WriteFile(tmpFile, []byte(content), 0600); err != nil {
 		return fmt.Errorf("write temp env file: %w", err)
 	}
 
 	if err := os.Rename(tmpFile, envPath); err != nil {
-		os.Remove(tmpFile) // Clean up temp file on error
+		os.Remove(tmpFile)
 		return fmt.Errorf("rename temp env file: %w", err)
 	}
 
 	return nil
 }
 
-// Get retrieves a single environment variable value
+// Get retrieves a single environment variable value by key.
 func Get(appName, key string) (string, error) {
 	vars, err := Load(appName)
 	if err != nil {
@@ -77,14 +78,13 @@ func Get(appName, key string) (string, error) {
 	return value, nil
 }
 
-// Set sets one or more environment variables
+// Set merges the provided updates into the existing environment variables and saves them.
 func Set(appName string, updates map[string]string) error {
 	vars, err := Load(appName)
 	if err != nil {
 		return err
 	}
 
-	// Merge updates
 	for key, value := range updates {
 		vars[key] = value
 	}
@@ -92,14 +92,13 @@ func Set(appName string, updates map[string]string) error {
 	return Save(appName, vars)
 }
 
-// Unset removes one or more environment variables
+// Unset removes the specified keys from the environment variables and saves them.
 func Unset(appName string, keys []string) error {
 	vars, err := Load(appName)
 	if err != nil {
 		return err
 	}
 
-	// Remove keys
 	for _, key := range keys {
 		delete(vars, key)
 	}
@@ -107,14 +106,13 @@ func Unset(appName string, keys []string) error {
 	return Save(appName, vars)
 }
 
-// Import imports environment variables from a file
+// Import loads variables from a file and either merges or replaces existing variables.
+// The filePath "-" means read from stdin.
 func Import(appName string, filePath string, merge bool) error {
-	// Read import file
 	var content []byte
 	var err error
 
 	if filePath == "-" {
-		// Read from stdin
 		content, err = os.ReadFile("/dev/stdin")
 	} else {
 		content, err = os.ReadFile(filePath)
@@ -130,15 +128,14 @@ func Import(appName string, filePath string, merge bool) error {
 	}
 
 	if merge {
-		// Merge with existing vars
 		return Set(appName, importedVars)
 	}
 
-	// Replace all vars
 	return Save(appName, importedVars)
 }
 
-// Export exports environment variables to a file
+// Export writes environment variables to a file or stdout.
+// The filePath "" or "-" means write to stdout.
 func Export(appName string, filePath string) error {
 	vars, err := Load(appName)
 	if err != nil {
@@ -148,12 +145,11 @@ func Export(appName string, filePath string) error {
 	content := Format(vars)
 
 	if filePath == "" || filePath == "-" {
-		// Write to stdout
 		fmt.Print(content)
 		return nil
 	}
 
-	// Ensure directory exists
+	// Create parent directories if needed
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("create export directory: %w", err)
