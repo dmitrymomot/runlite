@@ -1,0 +1,15 @@
+[Unit]
+Description=Runlite Domain Registry Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/runlite-domain-registry
+Restart=always
+RestartSec=5
+User=root
+Environment=PORT=3000
+
+[Install]
+WantedBy=multi-user.target

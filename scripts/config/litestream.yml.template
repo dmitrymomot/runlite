@@ -1,0 +1,93 @@
+# Litestream Configuration
+# Documentation: https://litestream.io/reference/config/
+
+# Access key and secret for S3-compatible storage
+# These should be set via environment variables for security:
+# LITESTREAM_ACCESS_KEY_ID
+# LITESTREAM_SECRET_ACCESS_KEY
+
+dbs:
+  # Runlite main system database (app metadata, deployments)
+  - path: /var/lib/runlite/runlite.db
+    replicas:
+      # AWS S3 example
+      - type: s3
+        bucket: ${LITESTREAM_S3_BUCKET}
+        path: runlite/db
+        region: ${LITESTREAM_S3_REGION:-us-east-1}
+        # Access credentials from environment variables
+        access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+        secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
+        # Sync interval (default: 1s)
+        sync-interval: 10s
+        # Retention period (default: 24h)
+        retention: 168h  # 7 days
+        # Retention check interval
+        retention-check-interval: 1h
+        # Snapshot interval (default: 24h)
+        snapshot-interval: 24h
+
+      # Backblaze B2 example (commented)
+      # - type: s3
+      #   bucket: ${LITESTREAM_B2_BUCKET}
+      #   path: runlite/db
+      #   endpoint: https://s3.${LITESTREAM_B2_REGION}.backblazeb2.com
+      #   region: ${LITESTREAM_B2_REGION}
+      #   access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+      #   secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
+      #   sync-interval: 10s
+      #   retention: 168h
+      #   retention-check-interval: 1h
+      #   snapshot-interval: 24h
+
+      # MinIO example (commented)
+      # - type: s3
+      #   bucket: ${LITESTREAM_MINIO_BUCKET}
+      #   path: runlite/db
+      #   endpoint: ${LITESTREAM_MINIO_ENDPOINT:-http://localhost:9000}
+      #   region: ${LITESTREAM_MINIO_REGION:-us-east-1}
+      #   access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+      #   secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
+      #   # Disable TLS for local MinIO (enable for production)
+      #   skip-verify: true
+      #   sync-interval: 10s
+      #   retention: 168h
+      #   retention-check-interval: 1h
+      #   snapshot-interval: 24h
+
+  # Domain registry database
+  - path: /var/lib/runlite/domains.db
+    replicas:
+      - type: s3
+        bucket: ${LITESTREAM_S3_BUCKET}
+        path: runlite/domains
+        region: ${LITESTREAM_S3_REGION:-us-east-1}
+        access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+        secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
+        sync-interval: 10s
+        retention: 168h  # 7 days
+        retention-check-interval: 1h
+        snapshot-interval: 24h
+
+  # Application-specific databases
+  # Note: Litestream requires explicit paths for each database (no recursive globs)
+  # Add each app's database individually. Apps store files in /var/lib/runlite/apps/{app-name}/
+  # Example:
+  # - path: /var/lib/runlite/apps/myapp/myapp.db
+  #   replicas:
+  #     - type: s3
+  #       bucket: ${LITESTREAM_S3_BUCKET}
+  #       path: runlite/apps/myapp
+  #       region: ${LITESTREAM_S3_REGION:-us-east-1}
+  #       access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+  #       secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
+  #       sync-interval: 10s
+  #       retention: 168h
+  #       retention-check-interval: 1h
+  #       snapshot-interval: 24h
+
+# Global settings
+# exec: command to execute after restoring database
+# addr: metrics server address (e.g., ":9090")
+# Uncomment to enable metrics
+# addr: ":9090"
