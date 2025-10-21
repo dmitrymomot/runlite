@@ -100,7 +100,7 @@ func (c *Client) GetConfig(path string) ([]byte, error) {
 }
 
 // doRequest performs an HTTP request to the Caddy API.
-func (c *Client) doRequest(method, url string, payload interface{}) error {
+func (c *Client) doRequest(method, url string, payload any) error {
 	var body io.Reader
 	if payload != nil {
 		data, err := json.Marshal(payload)
@@ -232,18 +232,18 @@ func (c *Client) GetAppDomains(appName string) ([]string, error) {
 
 // ConfigureOnDemandTLS sets up global on-demand TLS with validation endpoint.
 func (c *Client) ConfigureOnDemandTLS(askEndpoint string) error {
-	config := map[string]interface{}{
-		"apps": map[string]interface{}{
-			"tls": map[string]interface{}{
-				"automation": map[string]interface{}{
-					"on_demand": map[string]interface{}{
+	config := map[string]any{
+		"apps": map[string]any{
+			"tls": map[string]any{
+				"automation": map[string]any{
+					"on_demand": map[string]any{
 						"ask": askEndpoint,
-						"rate_limit": map[string]interface{}{
+						"rate_limit": map[string]any{
 							"interval": "2m",
 							"burst":    5,
 						},
 					},
-					"policies": []map[string]interface{}{
+					"policies": []map[string]any{
 						{"on_demand": true},
 					},
 				},
