@@ -48,3 +48,4 @@ docs/
 CLAUDE*.md
 AGENTS*.md
 .DS_Store
+runlite.yml
