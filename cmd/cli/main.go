@@ -26,8 +26,12 @@ func main() {
 
 			// Environment variables
 			envSetCommand(),
+			envGetCommand(),
 			envListCommand(),
 			envUnsetCommand(),
+			envEditCommand(),
+			envImportCommand(),
+			envExportCommand(),
 
 			// Deployment
 			deployCommand(),
