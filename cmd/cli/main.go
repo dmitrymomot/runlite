@@ -8,6 +8,7 @@ import (
 
 	"github.com/dmitrymomot/runlite/cmd/cli/commands/app"
 	"github.com/dmitrymomot/runlite/cmd/cli/commands/deploy"
+	"github.com/dmitrymomot/runlite/cmd/cli/commands/domain"
 	"github.com/dmitrymomot/runlite/cmd/cli/commands/env"
 	"github.com/dmitrymomot/runlite/cmd/cli/commands/logs"
 )
@@ -25,6 +26,7 @@ func main() {
 			app.Command(),
 			env.Command(),
 			deploy.Command(),
+			domain.Command(),
 			logs.Command(),
 		},
 	}
