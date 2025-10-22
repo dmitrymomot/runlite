@@ -1,59 +1,44 @@
 package app
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
-	"path/filepath"
+	"errors"
 	"time"
+)
+
+const (
+	// Maximum number of deployment records to keep in history
+	MaxDeploymentHistory = 10
+
+	// Deployment status values
+	DeploymentStatusActive  = "active"  // Currently serving traffic
+	DeploymentStatusStandby = "standby" // Last successful, ready for rollback
+	DeploymentStatusFailed  = "failed"  // Health check failed, never went active
+	DeploymentStatusStopped = "stopped" // Old release, cleaned up
+)
+
+var (
+	ErrNoActiveDeployment  = errors.New("no active deployment found")
+	ErrNoStandbyDeployment = errors.New("no standby deployment found")
+	ErrInvalidStatus       = errors.New("invalid deployment status")
 )
 
 // Metadata represents the metadata for an application.
 type Metadata struct {
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Status    string    `json:"status"` // created, deployed, stopped, failed
+	Name        string       `json:"name"`
+	CreatedAt   time.Time    `json:"created_at"`
+	UpdatedAt   time.Time    `json:"updated_at"`
+	Deployments []Deployment `json:"deployments,omitempty"`
 }
 
-// Save writes the app metadata to app.json in the app directory.
-func (m *Metadata) Save(appDir string) error {
-	metadataPath := filepath.Join(appDir, "app.json")
-
-	m.UpdatedAt = time.Now()
-
-	data, err := json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal metadata: %w", err)
-	}
-
-	if err := os.WriteFile(metadataPath, data, 0644); err != nil {
-		return fmt.Errorf("write metadata: %w", err)
-	}
-
-	return nil
-}
-
-// Load reads the app metadata from app.json in the app directory.
-func Load(appDir string) (*Metadata, error) {
-	metadataPath := filepath.Join(appDir, "app.json")
-
-	data, err := os.ReadFile(metadataPath)
-	if err != nil {
-		return nil, fmt.Errorf("read metadata: %w", err)
-	}
-
-	var meta Metadata
-	if err := json.Unmarshal(data, &meta); err != nil {
-		return nil, fmt.Errorf("unmarshal metadata: %w", err)
-	}
-
-	return &meta, nil
-}
-
-// Exists checks if metadata file exists for the given app directory.
-func Exists(appDir string) bool {
-	metadataPath := filepath.Join(appDir, "app.json")
-	_, err := os.Stat(metadataPath)
-	return err == nil
+// Deployment represents a single deployment record.
+type Deployment struct {
+	ReleaseID         string     `json:"release_id"`
+	Commit            string     `json:"commit"`
+	Port              int        `json:"port"`
+	Status            string     `json:"status"` // active, standby, failed, stopped
+	BinaryPath        string     `json:"binary_path"`
+	DeployedAt        time.Time  `json:"deployed_at"`
+	StoppedAt         *time.Time `json:"stopped_at,omitempty"`
+	HealthCheckPassed bool       `json:"health_check_passed"`
+	FailureReason     string     `json:"failure_reason,omitempty"`
 }
