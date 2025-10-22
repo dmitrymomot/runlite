@@ -1,118 +1,128 @@
 # runlite
 
-A lightweight, self-hosted PaaS (Platform as a Service) for Go applications and static websites.
+A lightweight, self-hosted PaaS for deploying applications via git push (Dokku-style).
+
+**Status:** Early development (MVP phase) - Core infrastructure established, deployment orchestration in progress.
 
 ## Features
 
-- 🚀 Single binary deployment
-- 🔒 Built-in HTTPS with automatic certificates (via Caddy)
-- 💾 SQLite-first with automated backups (via Litestream)
-- 🐙 GitHub webhook integration for auto-deployment
-- 🔧 Zero Docker overhead
-- 📦 Simple systemd process management
+- 🚀 **Git push deployment** - Deploy with `git push runlite main`
+- 🔒 **HTTPS** - Automatic certificates via external Caddy
+- 🔧 **No Docker** - Native processes managed by systemd
+- 📦 **Single binary** - One CLI for all operations
+- ⚡ **Zero-downtime deploys** - Blue/green deployment ready
+- 💾 **SQLite backups** - Automated via Litestream (planned)
 
-## Installation
+## Quick Start
 
-### Quick Install (Latest Version)
-
-Install the latest version of runlite on a fresh Linux server:
+### Installation
 
 ```bash
+# Install latest version (when released)
 curl -1sLf 'https://raw.githubusercontent.com/dmitrymomot/runlite/main/scripts/install.sh' | sudo -E bash
-```
-
-### Install Specific Version
-
-To install a specific version, use the install script from that version's tag:
-
-```bash
-# Install v1.0.14
-curl -1sLf 'https://raw.githubusercontent.com/dmitrymomot/runlite/v1.0.14/scripts/install.sh' | sudo -E bash
-```
-
-Or override the version using an environment variable:
-
-```bash
-# Install v1.0.14 using main branch script
-curl -1sLf 'https://raw.githubusercontent.com/dmitrymomot/runlite/main/scripts/install.sh' | RUNLITE_VERSION=v1.0.14 sudo -E bash
 ```
 
 ### Requirements
 
 - Linux (amd64 or arm64)
 - systemd
-- Root access (for service installation)
+- External Caddy server (for reverse proxy)
 
-### Manual Installation
-
-If you prefer to install manually:
-
-1. Download the latest release from [GitHub Releases](https://github.com/dmitrymomot/runlite/releases)
-2. Extract and install the binary:
-   ```bash
-   tar -xzf runlite_linux_amd64.tar.gz
-   sudo install -m 755 runlite /usr/local/bin/runlite
-   ```
-3. Create required directories:
-   ```bash
-   sudo mkdir -p /var/lib/runlite/apps
-   sudo mkdir -p /etc/runlite
-   ```
-4. Download and install the systemd service:
-   ```bash
-   sudo curl -L -o /etc/systemd/system/runlite.service \
-     https://raw.githubusercontent.com/dmitrymomot/runlite/main/scripts/runlite.service.template
-   ```
-5. Enable and start the service:
-   ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl enable runlite
-   sudo systemctl start runlite
-   ```
-
-## Usage
-
-### Check Status
+### Create Your First App
 
 ```bash
-# Check if runlite is running
-sudo systemctl status runlite
+# Create app
+runlite app:create my-app
 
-# View logs
-sudo journalctl -u runlite -f
+# Add git remote
+git remote add runlite git@server:~/apps/my-app.git
+
+# Deploy
+git push runlite main
 ```
 
-### Test the Server
+## How It Works
 
-```bash
-curl http://localhost:8080
-# Should return: welcome to runlite
+runlite uses a **git push deployment** flow similar to Dokku:
+
+```
+git push runlite main
+    ↓
+Git hook triggers
+    ↓
+Read runlite.yml (from your repo)
+    ↓
+Run build script
+    ↓
+Start on random port
+    ↓
+Health check
+    ↓
+Update Caddy routes
+    ↓
+Route traffic (zero-downtime)
 ```
 
-### Stop/Restart
+### App Configuration
 
-```bash
-# Stop the service
-sudo systemctl stop runlite
+Create `runlite.yml` in your app repository:
 
-# Restart the service
-sudo systemctl restart runlite
+```yaml
+app:
+  name: my-app
+
+build:
+  script: |
+    go build -o ./bin/server .
+  artifacts:
+    - ./bin/server
+
+run:
+  command: ./bin/server
+
+health:
+  path: /health
+  timeout: 30s
 ```
+
+## Project Structure
+
+```
+/var/lib/runlite/apps/{appName}/
+├── app.json              # App metadata (name, status, timestamps)
+├── env                   # Environment variables (plain text)
+├── databases/            # SQLite databases (auto-backup planned)
+└── releases/
+    ├── my-app-abc123     # Current release
+    └── my-app-xyz789     # Previous release (for rollback)
+
+/home/git/apps/{appName}.git/
+└── hooks/post-receive    # Deployment trigger
+```
+
+## Architecture
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for technical details.
+
+**Key Patterns:**
+- **Configuration-as-Code**: App metadata in JSON, environment in plain text
+- **External Caddy**: Separate systemd service, controlled via Admin API
+- **Atomic operations**: `write temp → rename` prevents corruption
+- **Layered architecture**: CLI → Service Layer (planned) → Modules
 
 ## Development
 
 ### Building from Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/dmitrymomot/runlite.git
 cd runlite
 
-# Build the binary
-go build -o runlite ./cmd/runlite
+# Required after every code change
+task format check
 
-# Run locally
-./runlite
+# Build check (silent, for error checking only)
+go build -o runlite cmd/cli/main.go > /dev/null 2>&1
 ```
 
 ### Running Tests
@@ -121,88 +131,39 @@ go build -o runlite ./cmd/runlite
 go test ./...
 ```
 
-## Architecture
+## Contributing
 
-- **Embedded Caddy**: Reverse proxy with automatic HTTPS
-- **Embedded Litestream**: SQLite database replication and backups
-- **systemd**: Process supervision for deployed applications
-- **GitHub Webhooks**: Automated deployment on push
+Contributions welcome! Please read [CLAUDE.md](./CLAUDE.md) for development guidelines.
+
+**Key commands:**
+```bash
+task format check    # REQUIRED after every code change
+task sqlc            # Generate SQL queries
+task mocks           # Generate test mocks
+task migration       # Create migration
+```
 
 ## Roadmap
 
-### Phase 1: MVP (Current)
-- [x] Basic HTTP server
-- [x] Installation script
-- [ ] GitHub webhook handler
-- [ ] Caddy integration
-- [ ] Litestream setup
-- [ ] Application deployment
-- [ ] systemd unit generation
+**✅ Implemented:** CLI structure, env management, app metadata, Caddy client, domain registry, config utilities
 
-### Phase 2: Polish
-- [ ] Custom domains API
-- [ ] Web UI for management
-- [ ] Server-side builds
-- [ ] Rollback functionality
-- [ ] Health checks
-- [ ] Metrics/monitoring
+**🚧 In Progress:** Git hooks, deployment orchestration
 
-### Phase 3: Advanced
-- [ ] Blue/green deployments
-- [ ] Preview environments
-- [ ] Multi-server support
-- [ ] Marketplace/plugins
+**📋 Planned:** Litestream backups, health checks, systemd generation, Web UI
+
+See [CLAUDE.md](./CLAUDE.md) for detailed implementation checklist.
 
 ## Release Process
 
-Releases are automated via GitHub Actions. To create a new release:
-
-1. **Create and push a version tag:**
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
-
-2. **GitHub Actions automatically:**
-   - Builds binaries for Linux (amd64 and arm64)
-   - Updates the VERSION variable in `install.sh`
-   - Creates a GitHub Release with:
-     - Pre-built binaries
-     - SHA256 checksums
-     - Updated installation script
-     - Installation instructions
-
-3. **The release is immediately available:**
-   ```bash
-   # Users can install the specific version
-   curl -1sLf 'https://raw.githubusercontent.com/dmitrymomot/runlite/v1.0.0/scripts/install.sh' | sudo -E bash
-   ```
-
-### Version Format
-
-Follow [Semantic Versioning](https://semver.org/):
-- `v1.0.0` - Major release
-- `v1.1.0` - Minor release (new features)
-- `v1.0.1` - Patch release (bug fixes)
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request.
-
-### Local Development
-
 ```bash
-# Build and test locally
-go build -o runlite ./cmd/runlite
-./runlite --version
-
-# Run tests
-go test ./...
-
-# Test with custom version
-go build -ldflags "-X main.version=v1.2.3" -o runlite ./cmd/runlite
-./runlite --version
+git tag v1.0.0
+git push origin v1.0.0
 ```
+
+GitHub Actions will automatically:
+- Build binaries for Linux (amd64 and arm64)
+- Create GitHub Release with binaries and checksums
+- Update installation script
 
 ## License
 
