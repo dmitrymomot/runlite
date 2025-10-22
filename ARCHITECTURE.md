@@ -87,7 +87,7 @@ scripts/                    # Installation, config templates, systemd
 **Example:**
 ```bash
 # CLI generates unit file and exits
-runlite deploy hook my-app abc123d
+runlite deploy my-app --ref abc123d
 
 # Systemd manages the process
 systemctl status runlite-my-app@20251022143055-a3f5c2b
@@ -143,9 +143,9 @@ Developer → git push runlite main
          ↓
 Git bare repo (/var/lib/runlite/apps/{app}/git/)
          ↓
-post-receive hook
+pre-receive hook
          ↓
-runlite deploy hook {appName} {commit}
+runlite deploy {appName} --ref {commit}
          ↓
 CLI parses, builds, generates systemd unit, exits
          ↓
@@ -280,7 +280,7 @@ API_TOKEN=yyyyy
 ### Zero-Downtime Deployment (7 Phases)
 
 #### Phase 1: Preparation
-1. Git hook receives push, calls `runlite deploy hook {appName} {commitHash}`
+1. Git hook receives push, calls `runlite deploy {appName} --ref {commitHash}`
 2. Parse `runlite.yml` from git commit
 3. Load environment variables from `/apps/{name}/env`
 4. Generate ReleaseID: `{timestamp}-{commitHash[:7]}`
