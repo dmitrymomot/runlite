@@ -62,8 +62,6 @@ scripts/                    # Installation, config templates, systemd
 ### Future Work
 
 - Litestream backups
-- GitHub webhooks (optional)
-- Web UI
 
 ## Architecture Decisions
 
@@ -160,8 +158,6 @@ systemd starts app process
 - ✅ No public endpoint needed
 - ✅ Works without internet
 - ✅ Can deploy uncommitted code (testing)
-
-**Future:** Can add GitHub webhooks as optional feature
 
 ### 5. Blue/Green Deployment Pattern
 
@@ -632,11 +628,9 @@ func Deploy(ctx context.Context, appName string) error
 
 ### v0.2
 - Litestream integration (automated SQLite backups)
-- GitHub webhooks (optional)
 - TUI with Bubble Tea
 
 ### v0.3
-- Web dashboard
 - Multi-user support
 - Resource limits (CPU/memory via systemd)
 

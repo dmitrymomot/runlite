@@ -165,8 +165,6 @@ task migration       # Create migration
 
 **📋 Future Work:**
 - Litestream backups (automated SQLite backups)
-- GitHub webhooks (optional alternative to git push)
-- Web UI
 
 See [CLAUDE.md](./CLAUDE.md) for detailed implementation plan.
 
