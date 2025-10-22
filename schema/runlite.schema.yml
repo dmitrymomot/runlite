@@ -6,6 +6,7 @@ description: Configuration schema for RunLite deployment platform
 type: object
 required:
   - app
+  - domains
 
 properties:
   app:
@@ -22,6 +23,21 @@ properties:
           - my-app
           - api-server
           - web_app
+
+  domains:
+    type: array
+    description: Domain names for the application (required)
+    minItems: 1
+    items:
+      type: string
+      pattern: ^(\*\.)?([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$
+      description: Valid domain name (supports wildcards like *.example.com)
+      examples:
+        - example.com
+        - www.example.com
+        - api.example.com
+        - "*.example.com"
+        - localhost
 
   build:
     type: object
@@ -176,10 +192,15 @@ examples:
   - # Minimal Go app
     app:
       name: simple-app
+    domains:
+      - simple-app.example.com
 
   - # Go app with custom build
     app:
       name: api-server
+    domains:
+      - api-server.example.com
+      - api.example.com
     build:
       script: |
         go build -o ./bin/server .
@@ -194,6 +215,8 @@ examples:
   - # Node.js app
     app:
       name: node-api
+    domains:
+      - node-api.example.com
     build:
       script: |
         npm ci

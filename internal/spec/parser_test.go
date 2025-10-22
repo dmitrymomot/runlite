@@ -17,7 +17,9 @@ func TestParseFile_MinimalConfig(t *testing.T) {
 	t.Parallel()
 
 	yaml := `app:
-  name: my-app`
+  name: my-app
+domains:
+  - my-app.local`
 
 	tempDir := t.TempDir()
 	configPath := filepath.Join(tempDir, "runlite.yml")
@@ -29,6 +31,7 @@ func TestParseFile_MinimalConfig(t *testing.T) {
 	require.NotNil(t, appSpec)
 
 	assert.Equal(t, "my-app", appSpec.App.Name)
+	assert.Equal(t, []string{"my-app.local"}, appSpec.Domains)
 	assert.Nil(t, appSpec.Build)
 	assert.Nil(t, appSpec.Run)
 	assert.Nil(t, appSpec.Health)
@@ -43,6 +46,10 @@ func TestParseFile_FullConfig(t *testing.T) {
 
 	yaml := `app:
   name: full-app
+
+domains:
+  - example.com
+  - www.example.com
 
 build:
   script: "go build -o ./bin/server ./cmd/server"
@@ -81,6 +88,11 @@ deploy:
 
 	// App
 	assert.Equal(t, "full-app", appSpec.App.Name)
+
+	// Domains
+	require.Len(t, appSpec.Domains, 2)
+	assert.Equal(t, "example.com", appSpec.Domains[0])
+	assert.Equal(t, "www.example.com", appSpec.Domains[1])
 
 	// Build
 	require.NotNil(t, appSpec.Build)
@@ -131,6 +143,8 @@ func TestParseFile_Defaults(t *testing.T) {
 			name: "health defaults when section exists but empty",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 health: {}`,
 			checkFunc: func(t *testing.T, s *spec.AppSpec) {
 				require.NotNil(t, s.Health)
@@ -143,6 +157,8 @@ health: {}`,
 			name: "health path defaults when only timeout specified",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 health:
   timeout: "60s"`,
 			checkFunc: func(t *testing.T, s *spec.AppSpec) {
@@ -156,6 +172,8 @@ health:
 			name: "health timeout defaults when only path specified",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 health:
   path: "/status"`,
 			checkFunc: func(t *testing.T, s *spec.AppSpec) {
@@ -169,6 +187,8 @@ health:
 			name: "health interval defaults when only path specified",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 health:
   path: "/ready"`,
 			checkFunc: func(t *testing.T, s *spec.AppSpec) {
@@ -182,6 +202,8 @@ health:
 			name: "deploy drain_period defaults when section exists but empty",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 deploy: {}`,
 			checkFunc: func(t *testing.T, s *spec.AppSpec) {
 				require.NotNil(t, s.Deploy)
@@ -191,7 +213,9 @@ deploy: {}`,
 		{
 			name: "no defaults when health section missing",
 			yaml: `app:
-  name: test-app`,
+  name: test-app
+domains:
+  - test-app.local`,
 			checkFunc: func(t *testing.T, s *spec.AppSpec) {
 				assert.Nil(t, s.Health)
 			},
@@ -199,7 +223,9 @@ deploy: {}`,
 		{
 			name: "no defaults when deploy section missing",
 			yaml: `app:
-  name: test-app`,
+  name: test-app
+domains:
+  - test-app.local`,
 			checkFunc: func(t *testing.T, s *spec.AppSpec) {
 				assert.Nil(t, s.Deploy)
 			},
@@ -340,6 +366,11 @@ func TestParseFile_Validation_AppName(t *testing.T) {
 
 			yaml := `app:
   name: ` + tt.appName
+			if !tt.wantError {
+				yaml += `
+domains:
+  - test-app.local`
+			}
 
 			tempDir := t.TempDir()
 			configPath := filepath.Join(tempDir, "runlite.yml")
@@ -363,6 +394,194 @@ func TestParseFile_Validation_AppName(t *testing.T) {
 	}
 }
 
+// TestParseFile_Validation_Domains tests domains validation rules.
+func TestParseFile_Validation_Domains(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		yaml      string
+		wantError bool
+		errMsg    string
+	}{
+		{
+			name: "single valid domain",
+			yaml: `app:
+  name: test-app
+domains:
+  - example.com`,
+			wantError: false,
+		},
+		{
+			name: "multiple valid domains",
+			yaml: `app:
+  name: test-app
+domains:
+  - example.com
+  - www.example.com
+  - api.example.com`,
+			wantError: false,
+		},
+		{
+			name: "subdomain with multiple levels",
+			yaml: `app:
+  name: test-app
+domains:
+  - api.v1.example.com`,
+			wantError: false,
+		},
+		{
+			name: "wildcard domain",
+			yaml: `app:
+  name: test-app
+domains:
+  - "*.example.com"`,
+			wantError: false,
+		},
+		{
+			name: "localhost for development",
+			yaml: `app:
+  name: test-app
+domains:
+  - localhost`,
+			wantError: false,
+		},
+		{
+			name: "domain with hyphens",
+			yaml: `app:
+  name: test-app
+domains:
+  - my-app.example.com`,
+			wantError: false,
+		},
+		{
+			name: "empty domains array",
+			yaml: `app:
+  name: test-app
+domains: []`,
+			wantError: true,
+			errMsg:    "domains: at least one domain is required",
+		},
+		{
+			name: "missing domains field",
+			yaml: `app:
+  name: test-app`,
+			wantError: true,
+			errMsg:    "domains: at least one domain is required",
+		},
+		{
+			name: "empty string in domains",
+			yaml: `app:
+  name: test-app
+domains:
+  - example.com
+  - ""
+  - api.example.com`,
+			wantError: true,
+			errMsg:    "domains[1]: cannot be empty",
+		},
+		{
+			name: "duplicate domains",
+			yaml: `app:
+  name: test-app
+domains:
+  - example.com
+  - api.example.com
+  - example.com`,
+			wantError: true,
+			errMsg:    "domains[2]: duplicate domain",
+		},
+		{
+			name: "invalid domain - starts with hyphen",
+			yaml: `app:
+  name: test-app
+domains:
+  - "-invalid.com"`,
+			wantError: true,
+			errMsg:    "domains[0]: invalid domain format",
+		},
+		{
+			name: "invalid domain - ends with hyphen",
+			yaml: `app:
+  name: test-app
+domains:
+  - "invalid-.com"`,
+			wantError: true,
+			errMsg:    "domains[0]: invalid domain format",
+		},
+		{
+			name: "invalid domain - double dots",
+			yaml: `app:
+  name: test-app
+domains:
+  - "invalid..com"`,
+			wantError: true,
+			errMsg:    "domains[0]: invalid domain format",
+		},
+		{
+			name: "invalid domain - special characters",
+			yaml: `app:
+  name: test-app
+domains:
+  - "invalid@example.com"`,
+			wantError: true,
+			errMsg:    "domains[0]: invalid domain format",
+		},
+		{
+			name: "invalid domain - underscores",
+			yaml: `app:
+  name: test-app
+domains:
+  - "invalid_domain.com"`,
+			wantError: true,
+			errMsg:    "domains[0]: invalid domain format",
+		},
+		{
+			name: "invalid wildcard - multiple asterisks",
+			yaml: `app:
+  name: test-app
+domains:
+  - "*.*.example.com"`,
+			wantError: true,
+			errMsg:    "domains[0]: invalid domain format",
+		},
+		{
+			name: "invalid wildcard - wildcard not at start",
+			yaml: `app:
+  name: test-app
+domains:
+  - "sub.*.example.com"`,
+			wantError: true,
+			errMsg:    "domains[0]: invalid domain format",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			tempDir := t.TempDir()
+			configPath := filepath.Join(tempDir, "runlite.yml")
+			err := os.WriteFile(configPath, []byte(tt.yaml), 0o644)
+			require.NoError(t, err)
+
+			appSpec, err := spec.ParseFile(configPath)
+
+			if tt.wantError {
+				require.Error(t, err)
+				assert.Nil(t, appSpec)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
+				}
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, appSpec)
+				assert.NotEmpty(t, appSpec.Domains)
+			}
+		})
+	}
+}
+
 // TestParseFile_Validation_Build tests build section validation.
 func TestParseFile_Validation_Build(t *testing.T) {
 	t.Parallel()
@@ -377,6 +596,8 @@ func TestParseFile_Validation_Build(t *testing.T) {
 			name: "artifacts without script",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 build:
   artifacts:
     - "./bin/server"`,
@@ -387,6 +608,8 @@ build:
 			name: "script without artifacts is OK",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 build:
   script: "go build -o ./bin/server"`,
 			wantError: false,
@@ -395,6 +618,8 @@ build:
 			name: "artifact source missing ./ prefix",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 build:
   script: "go build"
   artifacts:
@@ -407,6 +632,8 @@ build:
 			name: "artifact dest missing ./ prefix",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 build:
   script: "go build"
   artifacts:
@@ -419,6 +646,8 @@ build:
 			name: "string artifact missing ./ prefix",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 build:
   script: "go build"
   artifacts:
@@ -430,6 +659,8 @@ build:
 			name: "valid build with script and artifacts",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 build:
   script: "go build -o ./bin/server"
   artifacts:
@@ -477,6 +708,8 @@ func TestParseFile_Validation_Run(t *testing.T) {
 			name: "command missing ./ prefix",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 run:
   command: "bin/server"`,
 			wantError: true,
@@ -486,6 +719,8 @@ run:
 			name: "valid command with ./ prefix",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 run:
   command: "./bin/server"`,
 			wantError: false,
@@ -494,6 +729,8 @@ run:
 			name: "valid command with args",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 run:
   command: "./bin/server"
   args: ["--port", "8080"]`,
@@ -540,6 +777,8 @@ func TestParseFile_Validation_Health(t *testing.T) {
 			name: "path missing / prefix",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 health:
   path: "health"`,
 			wantError: true,
@@ -549,6 +788,8 @@ health:
 			name: "valid path with / prefix",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 health:
   path: "/health"`,
 			wantError: false,
@@ -557,6 +798,8 @@ health:
 			name: "valid nested path",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 health:
   path: "/api/v1/health"`,
 			wantError: false,
@@ -565,6 +808,8 @@ health:
 			name: "timeout exceeds max (10 minutes)",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 health:
   timeout: "11m"`,
 			wantError: true,
@@ -574,6 +819,8 @@ health:
 			name: "timeout at max boundary (10 minutes)",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 health:
   timeout: "10m"`,
 			wantError: false,
@@ -582,6 +829,8 @@ health:
 			name: "negative timeout",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 health:
   timeout: "-30s"`,
 			wantError: true,
@@ -591,6 +840,8 @@ health:
 			name: "negative interval",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 health:
   interval: "-1s"`,
 			wantError: true,
@@ -600,6 +851,8 @@ health:
 			name: "valid timeout and interval",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 health:
   timeout: "1m"
   interval: "5s"`,
@@ -646,6 +899,8 @@ func TestParseFile_Validation_Deploy(t *testing.T) {
 			name: "drain_period exceeds max (5 minutes)",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 deploy:
   drain_period: "6m"`,
 			wantError: true,
@@ -655,6 +910,8 @@ deploy:
 			name: "drain_period at max boundary (5 minutes)",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 deploy:
   drain_period: "5m"`,
 			wantError: false,
@@ -663,6 +920,8 @@ deploy:
 			name: "negative drain_period",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 deploy:
   drain_period: "-30s"`,
 			wantError: true,
@@ -672,6 +931,8 @@ deploy:
 			name: "valid drain_period",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 deploy:
   drain_period: "45s"`,
 			wantError: false,
@@ -717,6 +978,8 @@ func TestParseFile_Validation_StaticDatabase(t *testing.T) {
 			name: "static path missing ./ prefix",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 static:
   path: "public"`,
 			wantError: true,
@@ -726,6 +989,8 @@ static:
 			name: "valid static path",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 static:
   path: "./public"`,
 			wantError: false,
@@ -734,6 +999,8 @@ static:
 			name: "database path missing ./ prefix",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 database:
   path: "data"`,
 			wantError: true,
@@ -743,6 +1010,8 @@ database:
 			name: "database file missing ./ prefix",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 database:
   file: "data/app.db"`,
 			wantError: true,
@@ -752,6 +1021,8 @@ database:
 			name: "valid database config",
 			yaml: `app:
   name: test-app
+domains:
+  - test-app.local
 database:
   path: "./data"
   file: "./data/app.db"`,
@@ -793,6 +1064,8 @@ func TestParseFile_EdgeCases(t *testing.T) {
 
 		yaml := `app:
   name: test-app
+domains:
+  - test-app.local
 health: {}`
 
 		tempDir := t.TempDir()
@@ -815,6 +1088,8 @@ health: {}`
 
 		yaml := `app:
   name: test-app
+domains:
+  - test-app.local
 deploy: {}`
 
 		tempDir := t.TempDir()
@@ -836,6 +1111,8 @@ deploy: {}`
 		yaml := `app:
   name: test-app
   unknown_field: "ignored"
+domains:
+  - test-app.local
 unknown_section:
   foo: "bar"`
 
@@ -855,6 +1132,8 @@ unknown_section:
 
 		yaml := `app:
   name: test-app
+domains:
+  - test-app.local
 build:
   script: "make build"
   artifacts:`
@@ -881,6 +1160,8 @@ build:
 
 		yaml := `app:
   name: test-app
+domains:
+  - test-app.local
 run:
   args: ["--help"]`
 
@@ -902,6 +1183,8 @@ run:
 
 		yaml := `app:
   name: test-app
+domains:
+  - test-app.local
 health:
   path: ""`
 

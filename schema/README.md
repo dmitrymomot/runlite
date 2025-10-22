@@ -22,6 +22,9 @@ Add this comment at the top of your `runlite.yml`:
 
 app:
     name: my-app
+
+domains:
+    - my-app.example.com
 ```
 
 Or use local schema:
@@ -31,6 +34,9 @@ Or use local schema:
 
 app:
     name: my-app
+
+domains:
+    - my-app.example.com
 ```
 
 #### Option 2: VSCode Settings
@@ -95,6 +101,9 @@ Add this comment at the top of your `runlite.yml`:
 
 app:
     name: my-app
+
+domains:
+    - my-app.example.com
 ```
 
 #### Option 2: Zed Settings
@@ -186,6 +195,9 @@ Real-time error highlighting for:
 app:
     name: my-app # ✓ Valid
 
+domains:
+    - my-app.example.com # ✓ Valid domain
+
 build:
     script: |
         go build -o ./bin/server .
@@ -208,6 +220,8 @@ health:
 ```yaml
 app:
     name: my app! # ✗ Invalid: spaces and special chars not allowed
+
+domains: [] # ✗ Invalid: at least one domain required
 
 build:
     artifacts:

@@ -73,6 +73,9 @@ Create `runlite.yml` in your app repository:
 app:
   name: my-app
 
+domains:
+  - my-app.example.com
+
 build:
   script: |
     go build -o ./bin/server .

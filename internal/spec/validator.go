@@ -12,7 +12,14 @@ const (
 	MaxDrainPeriod   = 5 * time.Minute
 )
 
-var appNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+var (
+	appNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+	// Domain regex supports:
+	// - Standard domains: example.com, api.example.com
+	// - Wildcards: *.example.com
+	// - Localhost and simple names for development
+	domainRegex = regexp.MustCompile(`^(\*\.)?([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$`)
+)
 
 func validate(spec *AppSpec) error {
 	if spec.App.Name == "" {
@@ -21,6 +28,10 @@ func validate(spec *AppSpec) error {
 
 	if !appNameRegex.MatchString(spec.App.Name) {
 		return fmt.Errorf("app.name: must match pattern ^[a-zA-Z0-9_-]+$")
+	}
+
+	if err := validateDomains(spec.Domains); err != nil {
+		return err
 	}
 
 	if spec.Build != nil {
@@ -80,6 +91,31 @@ func validate(spec *AppSpec) error {
 		}
 		if spec.Database.File != "" && !strings.HasPrefix(spec.Database.File, "./") {
 			return fmt.Errorf("database.file: must start with ./")
+		}
+	}
+
+	return nil
+}
+
+func validateDomains(domains []string) error {
+	if len(domains) == 0 {
+		return fmt.Errorf("domains: at least one domain is required")
+	}
+
+	seen := make(map[string]bool, len(domains))
+
+	for i, domain := range domains {
+		if domain == "" {
+			return fmt.Errorf("domains[%d]: cannot be empty", i)
+		}
+
+		if seen[domain] {
+			return fmt.Errorf("domains[%d]: duplicate domain %q", i, domain)
+		}
+		seen[domain] = true
+
+		if !domainRegex.MatchString(domain) {
+			return fmt.Errorf("domains[%d]: invalid domain format %q", i, domain)
 		}
 	}
 

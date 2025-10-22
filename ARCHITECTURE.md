@@ -454,6 +454,7 @@ func ParseFile(path string) (*AppSpec, error)
 ```go
 type AppSpec struct {
     App      AppConfig       // name (required)
+    Domains  []string        // domains (required)
     Build    *BuildConfig    // script, artifacts
     Run      *RunConfig      // command, args ({{.Port}} template support)
     Health   *HealthConfig   // path, timeout, interval

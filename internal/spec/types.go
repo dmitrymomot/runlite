@@ -9,6 +9,7 @@ import (
 
 type AppSpec struct {
 	App      AppConfig       `yaml:"app"`
+	Domains  []string        `yaml:"domains"`
 	Build    *BuildConfig    `yaml:"build,omitempty"`
 	Run      *RunConfig      `yaml:"run,omitempty"`
 	Health   *HealthConfig   `yaml:"health,omitempty"`
@@ -22,8 +23,37 @@ type AppConfig struct {
 }
 
 type BuildConfig struct {
-	Script    string     `yaml:"script,omitempty"`
-	Artifacts []Artifact `yaml:"artifacts,omitempty"`
+	Script    string        `yaml:"script,omitempty"`
+	Artifacts []Artifact    `yaml:"artifacts,omitempty"`
+	Timeout   time.Duration `yaml:"timeout,omitempty"`
+}
+
+func (b *BuildConfig) UnmarshalYAML(value *yaml.Node) error {
+	if b == nil {
+		return fmt.Errorf("cannot unmarshal into nil BuildConfig")
+	}
+
+	var raw struct {
+		Script    string     `yaml:"script"`
+		Artifacts []Artifact `yaml:"artifacts"`
+		Timeout   string     `yaml:"timeout"`
+	}
+	if err := value.Decode(&raw); err != nil {
+		return err
+	}
+
+	b.Script = raw.Script
+	b.Artifacts = raw.Artifacts
+
+	if raw.Timeout != "" {
+		timeout, err := time.ParseDuration(raw.Timeout)
+		if err != nil {
+			return fmt.Errorf("build.timeout: %w", err)
+		}
+		b.Timeout = timeout
+	}
+
+	return nil
 }
 
 type Artifact struct {
@@ -113,7 +143,9 @@ type StaticConfig struct {
 }
 
 type DeployConfig struct {
-	DrainPeriod time.Duration `yaml:"drain_period,omitempty"`
+	DrainPeriod      time.Duration `yaml:"drain_period,omitempty"`
+	KeepReleases     *int          `yaml:"keep_releases,omitempty"`
+	CleanupOnFailure bool          `yaml:"cleanup_on_failure,omitempty"`
 }
 
 func (d *DeployConfig) UnmarshalYAML(value *yaml.Node) error {
@@ -122,7 +154,9 @@ func (d *DeployConfig) UnmarshalYAML(value *yaml.Node) error {
 	}
 
 	var raw struct {
-		DrainPeriod string `yaml:"drain_period"`
+		DrainPeriod      string `yaml:"drain_period"`
+		KeepReleases     *int   `yaml:"keep_releases"`
+		CleanupOnFailure bool   `yaml:"cleanup_on_failure"`
 	}
 	if err := value.Decode(&raw); err != nil {
 		return err
@@ -135,6 +169,9 @@ func (d *DeployConfig) UnmarshalYAML(value *yaml.Node) error {
 		}
 		d.DrainPeriod = drainPeriod
 	}
+
+	d.KeepReleases = raw.KeepReleases
+	d.CleanupOnFailure = raw.CleanupOnFailure
 
 	return nil
 }
