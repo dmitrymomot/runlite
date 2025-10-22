@@ -470,6 +470,61 @@ download_domain_registry_binary() {
     log_info "Domain registry binary installed successfully"
 }
 
+create_runlite_user() {
+    log_info "Creating runlite user and group..."
+
+    # Create runlite user if not exists
+    if ! id -u runlite >/dev/null 2>&1; then
+        useradd --system --shell /bin/false \
+                --home-dir /var/lib/runlite \
+                --comment "Runlite PaaS Service" \
+                runlite
+        log_info "✓ Created runlite user"
+    else
+        log_info "✓ runlite user already exists"
+    fi
+}
+
+configure_sudoers() {
+    log_info "Configuring sudoers for runlite user..."
+
+    local sudoers_file="/etc/sudoers.d/runlite"
+
+    # Create sudoers file with passwordless systemctl permissions
+    cat > "$sudoers_file" <<'EOF'
+# Allow runlite user to manage systemd services without password
+# This enables deployment operations without requiring sudo password
+
+# Daemon operations
+runlite ALL=(ALL) NOPASSWD: /usr/bin/systemctl daemon-reload
+
+# Service operations for runlite-managed services
+runlite ALL=(ALL) NOPASSWD: /usr/bin/systemctl start runlite-*
+runlite ALL=(ALL) NOPASSWD: /usr/bin/systemctl stop runlite-*
+runlite ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart runlite-*
+runlite ALL=(ALL) NOPASSWD: /usr/bin/systemctl reload runlite-*
+runlite ALL=(ALL) NOPASSWD: /usr/bin/systemctl enable runlite-*
+runlite ALL=(ALL) NOPASSWD: /usr/bin/systemctl disable runlite-*
+runlite ALL=(ALL) NOPASSWD: /usr/bin/systemctl is-active runlite-*
+runlite ALL=(ALL) NOPASSWD: /usr/bin/systemctl status runlite-*
+
+# Allow checking systemd-analyze for unit file validation
+runlite ALL=(ALL) NOPASSWD: /usr/bin/systemd-analyze verify *
+EOF
+
+    # Set proper permissions (sudoers files must be 0440)
+    chmod 0440 "$sudoers_file"
+
+    # Validate sudoers file
+    if visudo -c -f "$sudoers_file" >/dev/null 2>&1; then
+        log_info "✓ Sudoers configuration validated and installed"
+    else
+        log_error "Sudoers file validation failed, removing invalid file"
+        rm -f "$sudoers_file"
+        exit 1
+    fi
+}
+
 create_directories() {
     log_info "Creating required directories..."
 
@@ -486,7 +541,11 @@ create_directories() {
     chmod 755 "${DATA_DIR}/apps"
     chmod 755 "$CONFIG_DIR"
 
-    log_info "Directories created"
+    # Set ownership to runlite user
+    chown -R runlite:runlite "$DATA_DIR"
+    chown -R runlite:runlite "$CONFIG_DIR"
+
+    log_info "Directories created with proper ownership"
 }
 
 install_example_app() {
@@ -744,6 +803,8 @@ main() {
     download_binary "$version" "$platform"
     download_domain_registry_binary "$version" "$platform"
 
+    create_runlite_user
+    configure_sudoers
     create_directories
     install_example_app
 

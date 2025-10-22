@@ -2,6 +2,7 @@ package env
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 
@@ -51,7 +52,7 @@ func Save(appName string, vars map[string]string) error {
 
 	// Write to temp file first, then atomically rename to target location
 	tmpFile := envPath + ".tmp"
-	if err := os.WriteFile(tmpFile, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(tmpFile, []byte(content), 0o600); err != nil {
 		return fmt.Errorf("write temp env file: %w", err)
 	}
 
@@ -85,9 +86,7 @@ func Set(appName string, updates map[string]string) error {
 		return err
 	}
 
-	for key, value := range updates {
-		vars[key] = value
-	}
+	maps.Copy(vars, updates)
 
 	return Save(appName, vars)
 }
@@ -151,11 +150,11 @@ func Export(appName string, filePath string) error {
 
 	// Create parent directories if needed
 	dir := filepath.Dir(filePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("create export directory: %w", err)
 	}
 
-	if err := os.WriteFile(filePath, []byte(content), 0600); err != nil {
+	if err := os.WriteFile(filePath, []byte(content), 0o600); err != nil {
 		return fmt.Errorf("write export file: %w", err)
 	}
 

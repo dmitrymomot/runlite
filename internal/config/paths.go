@@ -33,7 +33,7 @@ func GetAppEnvPath(appName string) string {
 // EnsureAppDir creates the app directory if it doesn't exist.
 func EnsureAppDir(appName string) error {
 	appDir := GetAppDir(appName)
-	if err := os.MkdirAll(appDir, 0755); err != nil {
+	if err := os.MkdirAll(appDir, 0o755); err != nil {
 		return fmt.Errorf("create app directory: %w", err)
 	}
 	return nil

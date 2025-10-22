@@ -32,7 +32,7 @@ type Storage struct {
 }
 
 func NewStorage(ctx context.Context, logger *slog.Logger, dbPath string) (*Storage, error) {
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create database directory: %w", err)
 	}
 

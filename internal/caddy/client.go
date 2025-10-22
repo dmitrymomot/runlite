@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"time"
 )
 
@@ -165,10 +166,8 @@ func (c *Client) AddDomainToApp(appName, domain string) error {
 	}
 
 	// Step 3: Check if domain already exists
-	for _, d := range currentDomains {
-		if d == domain {
-			return nil // Already exists, no-op
-		}
+	if slices.Contains(currentDomains, domain) {
+		return nil // Already exists, no-op
 	}
 
 	// Step 4: Append new domain

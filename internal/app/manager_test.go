@@ -203,11 +203,11 @@ func TestLoadAndSave(t *testing.T) {
 
 		// Create app directory and write corrupted JSON
 		appDir := filepath.Join(dataDir, "apps", "corrupt")
-		err := os.MkdirAll(appDir, 0755)
+		err := os.MkdirAll(appDir, 0o755)
 		require.NoError(t, err)
 
 		metaPath := filepath.Join(appDir, "app.json")
-		err = os.WriteFile(metaPath, []byte("{invalid json}"), 0644)
+		err = os.WriteFile(metaPath, []byte("{invalid json}"), 0o644)
 		require.NoError(t, err)
 
 		_, err = manager.Load("corrupt")

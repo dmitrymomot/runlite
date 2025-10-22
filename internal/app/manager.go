@@ -58,7 +58,7 @@ func (m *Manager) Save(meta *Metadata) error {
 
 	// Atomic write: write to temp file, then rename
 	tmpPath := path + ".tmp"
-	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
+	if err := os.WriteFile(tmpPath, data, 0o644); err != nil {
 		return fmt.Errorf("write temp metadata: %w", err)
 	}
 
@@ -84,7 +84,7 @@ func (m *Manager) Create(appName string) error {
 
 	// Ensure app directory exists
 	appDir := m.appDir(appName)
-	if err := os.MkdirAll(appDir, 0755); err != nil {
+	if err := os.MkdirAll(appDir, 0o755); err != nil {
 		return fmt.Errorf("create app directory: %w", err)
 	}
 

@@ -35,11 +35,11 @@ func setupTestEnv(t *testing.T) (string, func()) {
 func createEnvFile(t *testing.T, dataDir, appName, content string) {
 	t.Helper()
 	appDir := filepath.Join(dataDir, "apps", appName)
-	err := os.MkdirAll(appDir, 0755)
+	err := os.MkdirAll(appDir, 0o755)
 	require.NoError(t, err, "failed to create app directory")
 
 	envPath := filepath.Join(appDir, "env")
-	err = os.WriteFile(envPath, []byte(content), 0644)
+	err = os.WriteFile(envPath, []byte(content), 0o644)
 	require.NoError(t, err, "failed to create env file")
 }
 
@@ -593,7 +593,7 @@ func TestImport(t *testing.T) {
 		// Create import file
 		importFile := filepath.Join(dataDir, "import.env")
 		importContent := "NEW_KEY=new_value\nKEY2=value2\n"
-		err := os.WriteFile(importFile, []byte(importContent), 0644)
+		err := os.WriteFile(importFile, []byte(importContent), 0o644)
 		require.NoError(t, err)
 
 		// Import with merge=false
@@ -620,7 +620,7 @@ func TestImport(t *testing.T) {
 		// Create import file
 		importFile := filepath.Join(dataDir, "import.env")
 		importContent := "KEY2=updated_value2\nKEY3=value3\n"
-		err := os.WriteFile(importFile, []byte(importContent), 0644)
+		err := os.WriteFile(importFile, []byte(importContent), 0o644)
 		require.NoError(t, err)
 
 		// Import with merge=true
@@ -669,7 +669,7 @@ func TestImport(t *testing.T) {
 		// Create malformed import file with empty key (actual parse error)
 		importFile := filepath.Join(dataDir, "bad.env")
 		importContent := "=value_without_key\n"
-		err := os.WriteFile(importFile, []byte(importContent), 0644)
+		err := os.WriteFile(importFile, []byte(importContent), 0o644)
 		require.NoError(t, err)
 
 		err = env.Import("testapp", importFile, false)
@@ -688,7 +688,7 @@ func TestImport(t *testing.T) {
 
 		// Create empty import file
 		importFile := filepath.Join(dataDir, "empty.env")
-		err := os.WriteFile(importFile, []byte(""), 0644)
+		err := os.WriteFile(importFile, []byte(""), 0o644)
 		require.NoError(t, err)
 
 		// Import with merge=false should clear all vars
@@ -705,7 +705,7 @@ func TestImport(t *testing.T) {
 		defer cleanup()
 
 		importFile := filepath.Join(dataDir, "import.env")
-		err := os.WriteFile(importFile, []byte("KEY=value"), 0644)
+		err := os.WriteFile(importFile, []byte("KEY=value"), 0o644)
 		require.NoError(t, err)
 
 		err = env.Import("", importFile, false)
@@ -718,7 +718,7 @@ func TestImport(t *testing.T) {
 		defer cleanup()
 
 		importFile := filepath.Join(dataDir, "import.env")
-		err := os.WriteFile(importFile, []byte("KEY=value"), 0644)
+		err := os.WriteFile(importFile, []byte("KEY=value"), 0o644)
 		require.NoError(t, err)
 
 		err = env.Import("/absolute/path/app", importFile, false)

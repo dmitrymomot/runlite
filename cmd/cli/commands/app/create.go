@@ -78,7 +78,7 @@ func createAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	hookPath := filepath.Join(gitRepoPath, "hooks", "pre-receive")
-	if err := os.WriteFile(hookPath, []byte(hookScript), 0755); err != nil {
+	if err := os.WriteFile(hookPath, []byte(hookScript), 0o755); err != nil {
 		return cli.Exit(ui.ErrorString(fmt.Sprintf("failed to write pre-receive hook: %v", err)), 1)
 	}
 

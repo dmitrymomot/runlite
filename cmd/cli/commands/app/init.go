@@ -64,7 +64,7 @@ func initAction(ctx context.Context, cmd *cli.Command) error {
 
 	config := generateConfig(appName, projectType)
 
-	if err := os.WriteFile(configFileName, []byte(config), 0644); err != nil {
+	if err := os.WriteFile(configFileName, []byte(config), 0o644); err != nil {
 		return fmt.Errorf("write config file: %w", err)
 	}
 
