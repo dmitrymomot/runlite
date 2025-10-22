@@ -15,6 +15,9 @@ func Command() *cli.Command {
 			initCommand(),
 			cleanupCommand(),
 			rollbackCommand(),
+			startCommand(),
+			stopCommand(),
+			deleteCommand(),
 		},
 	}
 }
