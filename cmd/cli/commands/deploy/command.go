@@ -12,6 +12,7 @@ func Command() *cli.Command {
 			startCommand(),
 			rollbackCommand(),
 			restartCommand(),
+			logsCommand(),
 		},
 	}
 }

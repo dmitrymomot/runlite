@@ -13,6 +13,8 @@ func Command() *cli.Command {
 			listCommand(),
 			infoCommand(),
 			initCommand(),
+			cleanupCommand(),
+			rollbackCommand(),
 		},
 	}
 }
