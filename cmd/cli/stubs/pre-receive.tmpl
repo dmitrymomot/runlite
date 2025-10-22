@@ -2,4 +2,6 @@
 set -e
 set -o pipefail
 
-cat | RUNLITE_DATA_DIR="{{.DataDir}}" runlite deploy hook {{.AppName}}
+while read oldrev newrev refname; do
+    RUNLITE_DATA_DIR="{{.DataDir}}" runlite deploy {{.AppName}} --ref "$newrev"
+done
