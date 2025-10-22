@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"time"
 
 	"github.com/urfave/cli/v3"
 
@@ -46,20 +45,23 @@ func createAction(ctx context.Context, cmd *cli.Command) error {
 		return cli.Exit(ui.ErrorString(err.Error()), 1)
 	}
 
+	// Create metadata manager
+	mgr := app.NewManager(config.GetDataDir())
+
 	// Check if app already exists
-	appDir := config.GetAppDir(appName)
-	if app.Exists(appDir) {
+	if mgr.Exists(appName) {
 		return cli.Exit(ui.ErrorString(fmt.Sprintf("app '%s' already exists", appName)), 1)
 	}
 
 	ui.PrintInfo(fmt.Sprintf("Creating app '%s'...", appName))
 
-	// Create app directory
-	if err := config.EnsureAppDir(appName); err != nil {
-		return cli.Exit(ui.ErrorString(fmt.Sprintf("failed to create app directory: %v", err)), 1)
+	// Create app directory structure and metadata
+	if err := mgr.Create(appName); err != nil {
+		return cli.Exit(ui.ErrorString(fmt.Sprintf("failed to create app: %v", err)), 1)
 	}
 
 	// Initialize bare git repository
+	appDir := config.GetAppDir(appName)
 	gitRepoPath := filepath.Join(appDir, "repo.git")
 	gitCmd := exec.CommandContext(ctx, "git", "init", "--bare", gitRepoPath)
 	if output, err := gitCmd.CombinedOutput(); err != nil {
@@ -78,18 +80,6 @@ func createAction(ctx context.Context, cmd *cli.Command) error {
 	hookPath := filepath.Join(gitRepoPath, "hooks", "pre-receive")
 	if err := os.WriteFile(hookPath, []byte(hookScript), 0755); err != nil {
 		return cli.Exit(ui.ErrorString(fmt.Sprintf("failed to write pre-receive hook: %v", err)), 1)
-	}
-
-	// Save app metadata
-	metadata := &app.Metadata{
-		Name:      appName,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Status:    "created",
-	}
-
-	if err := metadata.Save(appDir); err != nil {
-		return cli.Exit(ui.ErrorString(fmt.Sprintf("failed to save app metadata: %v", err)), 1)
 	}
 
 	ui.PrintSuccess(fmt.Sprintf("App '%s' created successfully", appName))
