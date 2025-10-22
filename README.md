@@ -2,14 +2,14 @@
 
 A lightweight, self-hosted PaaS for deploying applications via git push (Dokku-style).
 
-**Status:** Early development (MVP phase) - Core infrastructure established, deployment orchestration in progress.
+**Status:** Early development (MVP phase) - spec parser complete, deployment orchestrator next.
 
 ## Features
 
 - 🚀 **Git push deployment** - Deploy with `git push runlite main`
 - 🔒 **HTTPS** - Automatic certificates via external Caddy
 - 🔧 **No Docker** - Native processes managed by systemd
-- 📦 **Single binary** - One CLI for all operations
+- 📦 **Single binary** - One stateless CLI for all operations
 - ⚡ **Zero-downtime deploys** - Blue/green deployment ready
 - 💾 **SQLite backups** - Automated via Litestream (planned)
 
@@ -32,7 +32,7 @@ curl -1sLf 'https://raw.githubusercontent.com/dmitrymomot/runlite/main/scripts/i
 
 ```bash
 # Create app
-runlite app:create my-app
+runlite app create my-app
 
 # Add git remote
 git remote add runlite git@server:~/apps/my-app.git
@@ -54,7 +54,9 @@ Read runlite.yml (from your repo)
     ↓
 Run build script
     ↓
-Start on random port
+Generate systemd unit
+    ↓
+systemctl start
     ↓
 Health check
     ↓
@@ -89,15 +91,17 @@ health:
 
 ```
 /var/lib/runlite/apps/{appName}/
-├── app.json              # App metadata (name, status, timestamps)
+├── app.json              # App metadata (deployment history)
 ├── env                   # Environment variables (plain text)
-├── databases/            # SQLite databases (auto-backup planned)
+├── git/                  # Bare git repository
+│   └── hooks/
+│       └── post-receive  # Deployment trigger
 └── releases/
-    ├── my-app-abc123     # Current release
-    └── my-app-xyz789     # Previous release (for rollback)
-
-/home/git/apps/{appName}.git/
-└── hooks/post-receive    # Deployment trigger
+    ├── 20251022143055-a3f5c2b/   # ReleaseID: {timestamp}-{commit-hash}
+    │   ├── server                # Built artifacts
+    │   └── migrations/
+    └── 20251022150320-d8f9e1a/   # Previous release (for rollback)
+        └── ...
 ```
 
 ## Architecture
@@ -105,10 +109,11 @@ health:
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for technical details.
 
 **Key Patterns:**
+- **Stateless CLI**: Commands execute and exit - systemd manages app processes
 - **Configuration-as-Code**: App metadata in JSON, environment in plain text
 - **External Caddy**: Separate systemd service, controlled via Admin API
 - **Atomic operations**: `write temp → rename` prevents corruption
-- **Layered architecture**: CLI → Service Layer (planned) → Modules
+- **Blue/green deployments**: Active/standby pattern for zero-downtime
 
 ## Development
 
@@ -145,13 +150,25 @@ task migration       # Create migration
 
 ## Roadmap
 
-**✅ Implemented:** CLI structure, env management, app metadata, Caddy client, domain registry, config utilities
+**✅ Implemented:**
+- CLI structure (app, domain, env commands)
+- App metadata with Manager pattern (active/standby/failed/stopped states)
+- Caddy client (add/update/delete routes, zero-downtime updates)
+- Domain registry (SQLite storage)
+- Config utilities (path validation, security)
+- Environment variable management (CRUD, diff, parser)
+- **Spec parser (runlite.yml → Go structs, validation, defaults, 93.9% test coverage)**
 
-**🚧 In Progress:** Git hooks, deployment orchestration
+**🚧 Next to Implement:**
+- Deployment orchestrator (port allocation, systemd unit generation, build execution, health checks)
+- Git hooks (post-receive trigger)
 
-**📋 Planned:** Litestream backups, health checks, systemd generation, Web UI
+**📋 Future Work:**
+- Litestream backups (automated SQLite backups)
+- GitHub webhooks (optional alternative to git push)
+- Web UI
 
-See [CLAUDE.md](./CLAUDE.md) for detailed implementation checklist.
+See [CLAUDE.md](./CLAUDE.md) for detailed implementation plan.
 
 ## Release Process
 
