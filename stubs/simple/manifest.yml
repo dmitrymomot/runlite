@@ -1,0 +1,47 @@
+name: simple
+version: 1.0.0
+description: Single-app setup with Caddy + Litestream (static config)
+author: runlite
+
+# Prerequisites (distro-agnostic)
+requires:
+  os: linux
+  arch: [amd64, arm64]
+  systemd: true
+  root: true
+
+# Installers to run (in order)
+installers:
+  - caddy
+  - litestream
+
+# Configuration for each installer (amd64/x86_64 only for MVP)
+installer_config:
+  caddy:
+    download_url: "https://caddyserver.com/api/download?os=linux&arch=amd64"
+    binary_path: "/usr/local/bin/caddy"
+    config_template: "stubs/simple/configs/Caddyfile.tmpl"
+    config_path: "/etc/caddy/Caddyfile"
+    service_file: "stubs/simple/systemd/caddy.service"
+    system_user: "caddy"
+    owner: "caddy:caddy"
+
+  litestream:
+    download_url: "https://github.com/benbjohnson/litestream/releases/download/v0.3.13/litestream-v0.3.13-linux-amd64.tar.gz"
+    extract_file: "litestream"
+    binary_path: "/usr/local/bin/litestream"
+    config_template: "stubs/simple/configs/litestream.yml.tmpl"
+    config_path: "/etc/litestream.yml"
+    service_file: "stubs/simple/systemd/litestream.service"
+    system_user: ""
+    owner: "root:root"
+
+# Post-install message
+post_install: |
+  ✓ Simple setup complete!
+
+  Next steps:
+  1. Create your first app: runlite app create myapp
+  2. Deploy: runlite deploy myapp --ref main
+
+  Documentation: https://runlite.dev/docs/simple-setup

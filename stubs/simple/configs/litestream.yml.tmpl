@@ -1,0 +1,20 @@
+# Litestream Configuration for runlite (Simple Setup)
+#
+# This file is auto-generated from template during installation.
+# This file replicates the runlite database to local filesystem and optionally to S3.
+
+dbs:
+  - path: {{.DBPath}}
+    replicas:
+      # Local file backup (always enabled)
+      - path: {{.BackupPath}}/runlite.db
+
+      # Optional S3 backup (configured during installation)
+      {{if .S3Bucket}}
+      - type: s3
+        bucket: {{.S3Bucket}}
+        path: runlite.db
+        region: {{if .S3Region}}{{.S3Region}}{{else}}us-east-1{{end}}
+        {{if .S3AccessKey}}access-key-id: {{.S3AccessKey}}{{end}}
+        {{if .S3SecretKey}}secret-access-key: {{.S3SecretKey}}{{end}}
+      {{end}}
