@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-set -e
-set -o pipefail
-
-while read oldrev newrev refname; do
-    RUNLITE_DATA_DIR="{{.DataDir}}" runlite deploy {{.AppName}} --ref "$newrev"
-done
