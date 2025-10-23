@@ -1,0 +1,56 @@
+{
+	# Global options
+	# Admin API on localhost:2019 (accessible only from local machine)
+	admin localhost:2019
+
+	# Disable automatic HTTPS for now
+	auto_https off
+
+	# Access logging
+	log {
+		output file /var/log/caddy/access.log
+		format json
+	}
+}
+
+# Default HTTP server on port 80
+:80 {
+	# Root directory for apps
+	root * /apps/welcome
+
+	# Enable file server
+	file_server
+
+	# Access logging for this site
+	log {
+		output file /var/log/caddy/welcome.log
+	}
+
+	# Health check endpoint
+	handle /health {
+		respond "OK" 200
+	}
+}
+
+# Future HTTPS configuration (uncomment when ready):
+# :443 {
+#     # TLS configuration will be handled by Caddy automatically
+#     # or you can specify certificates manually:
+#     # tls /path/to/cert.pem /path/to/key.pem
+#
+#     root * /apps/welcome
+#     file_server
+#
+#     log {
+#         output file /var/log/caddy/welcome-https.log
+#     }
+# }
+
+# Future domain configuration example:
+# yourdomain.com {
+#     root * /apps/your-app
+#     file_server
+#
+#     # Reverse proxy to your app
+#     # reverse_proxy localhost:3000
+# }
